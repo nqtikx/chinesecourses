@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/changelog/changes/create-admin-user-table.yaml
   - include:
       file: db/changelog/changes/seed-admin-user.yaml
+  - include:
+      file: db/changelog/changes/update-admin-password.yml

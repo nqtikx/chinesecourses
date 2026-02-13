@@ -3,5 +3,6 @@ spring:
     active: local
 security:
   jwt:
-    secret: ${JWT_SECRET:change-me-in-env}
-    ttl-seconds: ${JWT_TTL_SECONDS:3600}
+    secret: ${JWT_SECRET}
+    issuer: ${JWT_ISSUER:chinesecourses}
+    access-token-ttl: ${JWT_ACCESS_TTL:PT30M}
