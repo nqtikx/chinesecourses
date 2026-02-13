@@ -2,6 +2,8 @@ package com.bntu.chinesecourses.model.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -20,16 +22,17 @@ public class AdminUserEntity {
   @Column(name = "password_hash", nullable = false, length = 128)
   private String passwordHash;
 
+  @Enumerated(EnumType.STRING)
   @Column(name = "role", nullable = false, length = 64)
-  private String role;
+  private AdminRole role;
 
-  @Column(name = "created_at", nullable = false)
+  @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
   protected AdminUserEntity() {
   }
 
-  public AdminUserEntity(UUID id, String username, String passwordHash, String role, Instant createdAt) {
+  public AdminUserEntity(UUID id, String username, String passwordHash, AdminRole role, Instant createdAt) {
     this.id = id;
     this.username = username;
     this.passwordHash = passwordHash;
@@ -49,7 +52,7 @@ public class AdminUserEntity {
     return passwordHash;
   }
 
-  public String getRole() {
+  public AdminRole getRole() {
     return role;
   }
 
