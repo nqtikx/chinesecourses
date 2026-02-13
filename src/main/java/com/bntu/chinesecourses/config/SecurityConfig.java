@@ -38,7 +38,7 @@ public class SecurityConfig {
           true,
           true,
           true,
-          List.of(new SimpleGrantedAuthority(user.getRole()))
+          List.of(new SimpleGrantedAuthority(user.getRole().name()))
       );
     };
   }
