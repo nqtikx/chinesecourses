@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
-      id: 001-init-admin-user
-      author: diploma
+      id: create-admin-user-table
+      author: chinesecourses
       changes:
         - createTable:
             tableName: admin_user
@@ -10,26 +10,26 @@ databaseChangeLog:
                   name: id
                   type: uuid
                   constraints:
-                    primaryKey: true
                     nullable: false
+                    primaryKey: true
               - column:
                   name: username
-                  type: varchar(100)
+                  type: varchar(128)
                   constraints:
                     nullable: false
                     unique: true
               - column:
                   name: password_hash
-                  type: varchar(100)
+                  type: varchar(128)
                   constraints:
                     nullable: false
               - column:
                   name: role
-                  type: varchar(50)
+                  type: varchar(64)
                   constraints:
                     nullable: false
               - column:
                   name: created_at
-                  type: timestamp
+                  type: timestamp with time zone
                   constraints:
                     nullable: false
