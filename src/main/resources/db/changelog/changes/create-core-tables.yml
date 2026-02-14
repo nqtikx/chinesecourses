@@ -1,0 +1,411 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-person
+      author: chinesecourses
+      changes:
+        - createTable:
+            tableName: person
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: last_name
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: first_name
+                  type: varchar(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: middle_name
+                  type: varchar(128)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: birth_date
+                  type: date
+                  constraints:
+                    nullable: true
+              - column:
+                  name: phone
+                  type: varchar(32)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: email
+                  type: varchar(256)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: archived
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: person
+            indexName: ix_person_last_name
+            columns:
+              - column:
+                  name: last_name
+        - createIndex:
+            tableName: person
+            indexName: ix_person_phone
+            columns:
+              - column:
+                  name: phone
+        - createIndex:
+            tableName: person
+            indexName: ix_person_email
+            columns:
+              - column:
+                  name: email
+
+  - changeSet:
+      id: create-course
+      author: chinesecourses
+      changes:
+        - createTable:
+            tableName: course
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: base_price
+                  type: numeric(12,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: course
+            indexName: ux_course_name
+            unique: true
+            columns:
+              - column:
+                  name: name
+
+  - changeSet:
+      id: create-semester
+      author: chinesecourses
+      changes:
+        - createTable:
+            tableName: semester
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: course_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: base_price
+                  type: numeric(12,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: semester
+            baseColumnNames: course_id
+            referencedTableName: course
+            referencedColumnNames: id
+            constraintName: fk_semester_course
+            onDelete: restrict
+        - createIndex:
+            tableName: semester
+            indexName: ix_semester_course_id
+            columns:
+              - column:
+                  name: course_id
+        - createIndex:
+            tableName: semester
+            indexName: ux_semester_course_name
+            unique: true
+            columns:
+              - column:
+                  name: course_id
+              - column:
+                  name: name
+
+  - changeSet:
+      id: create-teacher
+      author: chinesecourses
+      changes:
+        - createTable:
+            tableName: teacher
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: archived
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: teacher
+            baseColumnNames: id
+            referencedTableName: person
+            referencedColumnNames: id
+            constraintName: fk_teacher_person
+            onDelete: restrict
+
+  - changeSet:
+      id: create-study-group
+      author: chinesecourses
+      changes:
+        - createTable:
+            tableName: study_group
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: semester_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: teacher_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: name
+                  type: varchar(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: schedule_notes
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: archived
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: study_group
+            baseColumnNames: semester_id
+            referencedTableName: semester
+            referencedColumnNames: id
+            constraintName: fk_study_group_semester
+            onDelete: restrict
+        - addForeignKeyConstraint:
+            baseTableName: study_group
+            baseColumnNames: teacher_id
+            referencedTableName: teacher
+            referencedColumnNames: id
+            constraintName: fk_study_group_teacher
+            onDelete: set null
+        - createIndex:
+            tableName: study_group
+            indexName: ix_study_group_semester_id
+            columns:
+              - column:
+                  name: semester_id
+        - createIndex:
+            tableName: study_group
+            indexName: ix_study_group_teacher_id
+            columns:
+              - column:
+                  name: teacher_id
+        - createIndex:
+            tableName: study_group
+            indexName: ux_study_group_semester_name
+            unique: true
+            columns:
+              - column:
+                  name: semester_id
+              - column:
+                  name: name
+
+  - changeSet:
+      id: create-enrollment
+      author: chinesecourses
+      changes:
+        - createTable:
+            tableName: enrollment
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: student_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payer_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: semester_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: group_id
+                  type: uuid
+                  constraints:
+                    nullable: true
+              - column:
+                  name: status
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: level
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: enrollment
+            baseColumnNames: student_id
+            referencedTableName: person
+            referencedColumnNames: id
+            constraintName: fk_enrollment_student
+            onDelete: restrict
+        - addForeignKeyConstraint:
+            baseTableName: enrollment
+            baseColumnNames: payer_id
+            referencedTableName: person
+            referencedColumnNames: id
+            constraintName: fk_enrollment_payer
+            onDelete: restrict
+        - addForeignKeyConstraint:
+            baseTableName: enrollment
+            baseColumnNames: semester_id
+            referencedTableName: semester
+            referencedColumnNames: id
+            constraintName: fk_enrollment_semester
+            onDelete: restrict
+        - addForeignKeyConstraint:
+            baseTableName: enrollment
+            baseColumnNames: group_id
+            referencedTableName: study_group
+            referencedColumnNames: id
+            constraintName: fk_enrollment_group
+            onDelete: set null
+        - createIndex:
+            tableName: enrollment
+            indexName: ix_enrollment_student_id
+            columns:
+              - column:
+                  name: student_id
+        - createIndex:
+            tableName: enrollment
+            indexName: ix_enrollment_semester_id
+            columns:
+              - column:
+                  name: semester_id
+        - createIndex:
+            tableName: enrollment
+            indexName: ix_enrollment_group_id
+            columns:
+              - column:
+                  name: group_id
+        - createIndex:
+            tableName: enrollment
+            indexName: ix_enrollment_status
+            columns:
+              - column:
+                  name: status
+        - createIndex:
+            tableName: enrollment
+            indexName: ix_enrollment_level
+            columns:
+              - column:
+                  name: level
