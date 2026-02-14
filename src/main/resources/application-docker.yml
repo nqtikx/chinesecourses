@@ -11,11 +11,13 @@ spring:
     hibernate:
       ddl-auto: none
     open-in-view: false
-  security:
-    jwt:
-      secret: ${JWT_SECRET:change-me}
-      access-ttl: ${JWT_ACCESS_TTL:15m}
-      refresh-ttl: ${JWT_REFRESH_TTL:30d}
   liquibase:
     enabled: true
     change-log: classpath:db/changelog/db.changelog-master.yml
+security:
+  jwt:
+    secret: ${JWT_SECRET}
+    issuer: ${JWT_ISSUER:chinesecourses}
+    access-token-ttl: ${JWT_ACCESS_TTL:PT30M}
+
+

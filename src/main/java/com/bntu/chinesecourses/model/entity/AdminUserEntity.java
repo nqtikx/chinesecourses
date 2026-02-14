@@ -26,7 +26,7 @@ public class AdminUserEntity {
   @Column(name = "role", nullable = false, length = 64)
   private AdminRole role;
 
-  @Column(name = "created_at", nullable = false, updatable = false)
+  @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
   protected AdminUserEntity() {
