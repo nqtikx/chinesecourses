@@ -1,5 +1,6 @@
 package com.bntu.chinesecourses.controller;
 
+import com.bntu.chinesecourses.model.dto.ArchiveRequest;
 import com.bntu.chinesecourses.model.dto.EnrollmentCreateRequest;
 import com.bntu.chinesecourses.model.dto.EnrollmentResponse;
 import com.bntu.chinesecourses.model.dto.EnrollmentUpdateRequest;
@@ -55,8 +56,9 @@ public class EnrollmentController {
   }
 
   @PatchMapping("/{id}/archive")
-  public EnrollmentResponse archive(@PathVariable Long id) {
-    return enrollmentService.archive(id);
+  public EnrollmentResponse setArchived(@PathVariable Long id, @RequestBody ArchiveRequest request) {
+    return enrollmentService.setArchived(id, request.archived());
   }
+
 
 }
