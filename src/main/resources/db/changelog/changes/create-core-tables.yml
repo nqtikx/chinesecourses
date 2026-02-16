@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: create-person
+      id: 010-create-person
       author: chinesecourses
       changes:
         - createTable:
@@ -26,33 +26,38 @@ databaseChangeLog:
               - column:
                   name: middle_name
                   type: varchar(128)
-                  constraints:
-                    nullable: true
               - column:
                   name: birth_date
                   type: date
-                  constraints:
-                    nullable: true
               - column:
                   name: phone
                   type: varchar(32)
-                  constraints:
-                    nullable: true
               - column:
                   name: email
                   type: varchar(256)
-                  constraints:
-                    nullable: true
               - column:
                   name: archived
                   type: boolean
+                  defaultValueBoolean: false
                   constraints:
                     nullable: false
               - column:
                   name: created_at
                   type: timestamp with time zone
+                  defaultValueComputed: now()
                   constraints:
                     nullable: false
+
+        - addUniqueConstraint:
+            tableName: person
+            columnNames: phone
+            constraintName: ux_person_phone
+
+        - addUniqueConstraint:
+            tableName: person
+            columnNames: email
+            constraintName: ux_person_email
+
         - createIndex:
             tableName: person
             indexName: ix_person_last_name
@@ -73,7 +78,41 @@ databaseChangeLog:
                   name: email
 
   - changeSet:
-      id: create-course
+      id: 011-create-teacher
+      author: chinesecourses
+      changes:
+        - createTable:
+            tableName: teacher
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: teacher
+            baseColumnNames: id
+            referencedTableName: person
+            referencedColumnNames: id
+            constraintName: fk_teacher_person
+            onDelete: restrict
+
+  - changeSet:
+      id: 012-create-course
       author: chinesecourses
       changes:
         - createTable:
@@ -94,33 +133,26 @@ databaseChangeLog:
               - column:
                   name: description
                   type: text
-                  constraints:
-                    nullable: true
-              - column:
-                  name: base_price
-                  type: numeric(12,2)
-                  constraints:
-                    nullable: false
               - column:
                   name: archived
                   type: boolean
+                  defaultValueBoolean: false
                   constraints:
                     nullable: false
               - column:
                   name: created_at
                   type: timestamp with time zone
+                  defaultValueComputed: now()
                   constraints:
                     nullable: false
-        - createIndex:
+
+        - addUniqueConstraint:
             tableName: course
-            indexName: ux_course_name
-            unique: true
-            columns:
-              - column:
-                  name: name
+            columnNames: name
+            constraintName: ux_course_name
 
   - changeSet:
-      id: create-semester
+      id: 013-create-semester
       author: chinesecourses
       changes:
         - createTable:
@@ -154,20 +186,18 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: base_price
-                  type: numeric(12,2)
-                  constraints:
-                    nullable: false
-              - column:
                   name: archived
                   type: boolean
+                  defaultValueBoolean: false
                   constraints:
                     nullable: false
               - column:
                   name: created_at
                   type: timestamp with time zone
+                  defaultValueComputed: now()
                   constraints:
                     nullable: false
+
         - addForeignKeyConstraint:
             baseTableName: semester
             baseColumnNames: course_id
@@ -175,56 +205,26 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_semester_course
             onDelete: restrict
+
+        - addUniqueConstraint:
+            tableName: semester
+            columnNames: course_id, name
+            constraintName: ux_semester_course_name
+
+        - addCheckConstraint:
+            tableName: semester
+            constraintName: ck_semester_dates
+            checkConstraint: "start_date <= end_date"
+
         - createIndex:
             tableName: semester
             indexName: ix_semester_course_id
             columns:
               - column:
                   name: course_id
-        - createIndex:
-            tableName: semester
-            indexName: ux_semester_course_name
-            unique: true
-            columns:
-              - column:
-                  name: course_id
-              - column:
-                  name: name
 
   - changeSet:
-      id: create-teacher
-      author: chinesecourses
-      changes:
-        - createTable:
-            tableName: teacher
-            columns:
-              - column:
-                  name: id
-                  type: bigint
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: archived
-                  type: boolean
-                  constraints:
-                    nullable: false
-              - column:
-                  name: created_at
-                  type: timestamp with time zone
-                  constraints:
-                    nullable: false
-        - addForeignKeyConstraint:
-            baseTableName: teacher
-            baseColumnNames: id
-            referencedTableName: person
-            referencedColumnNames: id
-            constraintName: fk_teacher_person
-            onDelete: restrict
-
-  - changeSet:
-      id: create-study-group
+      id: 014-create-study-group
       author: chinesecourses
       changes:
         - createTable:
@@ -245,8 +245,6 @@ databaseChangeLog:
               - column:
                   name: teacher_id
                   type: bigint
-                  constraints:
-                    nullable: true
               - column:
                   name: name
                   type: varchar(256)
@@ -255,18 +253,19 @@ databaseChangeLog:
               - column:
                   name: schedule_notes
                   type: text
-                  constraints:
-                    nullable: true
               - column:
                   name: archived
                   type: boolean
+                  defaultValueBoolean: false
                   constraints:
                     nullable: false
               - column:
                   name: created_at
                   type: timestamp with time zone
+                  defaultValueComputed: now()
                   constraints:
                     nullable: false
+
         - addForeignKeyConstraint:
             baseTableName: study_group
             baseColumnNames: semester_id
@@ -274,6 +273,7 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_study_group_semester
             onDelete: restrict
+
         - addForeignKeyConstraint:
             baseTableName: study_group
             baseColumnNames: teacher_id
@@ -281,6 +281,12 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_study_group_teacher
             onDelete: set null
+
+        - addUniqueConstraint:
+            tableName: study_group
+            columnNames: semester_id, name
+            constraintName: ux_study_group_semester_name
+
         - createIndex:
             tableName: study_group
             indexName: ix_study_group_semester_id
@@ -293,18 +299,9 @@ databaseChangeLog:
             columns:
               - column:
                   name: teacher_id
-        - createIndex:
-            tableName: study_group
-            indexName: ux_study_group_semester_name
-            unique: true
-            columns:
-              - column:
-                  name: semester_id
-              - column:
-                  name: name
 
   - changeSet:
-      id: create-enrollment
+      id: 015-create-enrollment
       author: chinesecourses
       changes:
         - createTable:
@@ -325,8 +322,6 @@ databaseChangeLog:
               - column:
                   name: payer_id
                   type: bigint
-                  constraints:
-                    nullable: true
               - column:
                   name: semester_id
                   type: bigint
@@ -335,8 +330,6 @@ databaseChangeLog:
               - column:
                   name: group_id
                   type: bigint
-                  constraints:
-                    nullable: true
               - column:
                   name: status
                   type: varchar(32)
@@ -350,13 +343,16 @@ databaseChangeLog:
               - column:
                   name: archived
                   type: boolean
+                  defaultValueBoolean: false
                   constraints:
                     nullable: false
               - column:
                   name: created_at
                   type: timestamp with time zone
+                  defaultValueComputed: now()
                   constraints:
                     nullable: false
+
         - addForeignKeyConstraint:
             baseTableName: enrollment
             baseColumnNames: student_id
@@ -364,6 +360,7 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_enrollment_student
             onDelete: restrict
+
         - addForeignKeyConstraint:
             baseTableName: enrollment
             baseColumnNames: payer_id
@@ -371,6 +368,7 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_enrollment_payer
             onDelete: restrict
+
         - addForeignKeyConstraint:
             baseTableName: enrollment
             baseColumnNames: semester_id
@@ -378,6 +376,7 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_enrollment_semester
             onDelete: restrict
+
         - addForeignKeyConstraint:
             baseTableName: enrollment
             baseColumnNames: group_id
@@ -385,10 +384,7 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_enrollment_group
             onDelete: set null
-        - addUniqueConstraint:
-            tableName: enrollment
-            columnNames: student_id, semester_id
-            constraintName: ux_enrollment_student_semester
+
         - createIndex:
             tableName: enrollment
             indexName: ix_enrollment_student_id
@@ -420,4 +416,11 @@ databaseChangeLog:
               - column:
                   name: level
 
-
+  - changeSet:
+      id: 016-enrollment-unique-active-student-semester
+      author: chinesecourses
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: "CREATE UNIQUE INDEX IF NOT EXISTS ux_enrollment_student_semester_active ON enrollment(student_id, semester_id) WHERE archived = false;"
