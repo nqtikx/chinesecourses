@@ -40,21 +40,14 @@ public class PersonService {
         request.firstName(),
         request.middleName(),
         request.birthDate(),
-        request.phone(),
-        request.email(),
+        phone,
+        email,
         false,
         Instant.now()
     );
 
     PersonEntity saved = personRepository.save(entity);
     return toResponse(saved);
-  }
-
-  @Transactional(readOnly = true)
-  public PersonResponse get(Long id) {
-    return personRepository.findById(id)
-        .map(PersonService::toResponse)
-        .orElseThrow();
   }
 
   @Transactional
@@ -75,10 +68,16 @@ public class PersonService {
     entity.setFirstName(request.firstName());
     entity.setMiddleName(request.middleName());
     entity.setBirthDate(request.birthDate());
-    entity.setPhone(request.phone());
-    entity.setEmail(request.email());
+    entity.setPhone(phone);
+    entity.setEmail(email);
     entity.setArchived(request.archived());
     return toResponse(entity);
+  }
+  @Transactional(readOnly = true)
+  public PersonResponse get(Long id) {
+    return personRepository.findById(id)
+        .map(PersonService::toResponse)
+        .orElseThrow();
   }
 
   @Transactional(readOnly = true)
@@ -117,14 +116,6 @@ public class PersonService {
         entity.getCreatedAt()
     );
   }
-
-  @Transactional
-  public PersonResponse archive(Long id) {
-    PersonEntity entity = personRepository.findById(id).orElseThrow();
-    entity.setArchived(true);
-    return toResponse(entity);
-  }
-
   @Transactional
   public PersonResponse setArchived(Long id, boolean archived) {
     PersonEntity entity = personRepository.findById(id).orElseThrow();
