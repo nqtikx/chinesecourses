@@ -8,6 +8,7 @@ import com.bntu.chinesecourses.model.dto.EnrollmentUpdateRequest;
 import com.bntu.chinesecourses.model.entity.ChineseLevel;
 import com.bntu.chinesecourses.model.entity.EnrollmentEntity;
 import com.bntu.chinesecourses.model.entity.EnrollmentStatus;
+import com.bntu.chinesecourses.model.entity.StudyGroupEntity;
 import com.bntu.chinesecourses.repository.EnrollmentRepository;
 import com.bntu.chinesecourses.repository.PersonRepository;
 import com.bntu.chinesecourses.repository.SemesterRepository;
