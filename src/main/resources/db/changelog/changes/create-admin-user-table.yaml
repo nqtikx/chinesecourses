@@ -11,8 +11,8 @@ databaseChangeLog:
                   type: bigint
                   autoIncrement: true
                   constraints:
-                    nullable: false
                     primaryKey: true
+                    nullable: false
               - column:
                   name: username
                   type: varchar(128)
@@ -32,5 +32,6 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: timestamp with time zone
+                  defaultValueComputed: now()
                   constraints:
                     nullable: false

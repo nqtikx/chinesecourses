@@ -8,7 +8,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: username
-                  value: "admin"
+                  value: admin
               - column:
                   name: password_hash
                   value: "$2b$10$C/sP4TxpYKCAzf6C6EEkFek/YFZffp.e2HkCm.5WxFJX.ffA3PmsO"
@@ -17,5 +17,4 @@ databaseChangeLog:
                   value: "ROLE_ADMIN"
               - column:
                   name: created_at
-                  valueComputed: "now()"
-              
+                  valueComputed: now()

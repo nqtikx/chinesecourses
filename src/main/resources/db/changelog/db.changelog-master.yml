@@ -1,9 +1,11 @@
 databaseChangeLog:
   - include:
-      file: db/changelog/changes/create-admin-user-table.yaml
+      file: db/changelog/changes/create-admin-user-table.yml
   - include:
-      file: db/changelog/changes/seed-admin-user.yaml
+      file: db/changelog/changes/seed-admin-user.yml
   - include:
       file: db/changelog/changes/update-admin-password.yml
   - include:
-      file: db/changelog/changes/create-core-tables.yml
+      file: db/changelog/changes/010-create-core-tables.yml
+  - include:
+      file: db/changelog/changes/020-create-schedule-attendance-tables.yml
