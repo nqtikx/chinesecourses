@@ -1,5 +1,6 @@
 package com.bntu.chinesecourses.service;
 
+import com.bntu.chinesecourses.exception.ConflictException;
 import com.bntu.chinesecourses.exception.NotFoundException;
 import com.bntu.chinesecourses.model.dto.PersonCreateRequest;
 import com.bntu.chinesecourses.model.dto.PersonResponse;
@@ -22,6 +23,17 @@ public class PersonService {
 
   @Transactional
   public PersonResponse create(PersonCreateRequest request) {
+    String phone = normalizePhone(request.phone());
+    String email = normalizeEmail(request.email());
+
+    if (phone != null && personRepository.existsByArchivedFalseAndPhone(phone)) {
+      throw new ConflictException("Phone already exists");
+    }
+
+    if (email != null && personRepository.existsByArchivedFalseAndEmailIgnoreCase(email)) {
+      throw new ConflictException("Email already exists");
+    }
+
     PersonEntity entity = new PersonEntity(
         null,
         request.lastName(),
@@ -47,6 +59,17 @@ public class PersonService {
 
   @Transactional
   public PersonResponse update(Long id, PersonUpdateRequest request) {
+    String phone = normalizePhone(request.phone());
+    String email = normalizeEmail(request.email());
+
+    if (phone != null && personRepository.existsByArchivedFalseAndPhoneAndIdNot(phone, id)) {
+      throw new ConflictException("Phone already exists");
+    }
+
+    if (email != null && personRepository.existsByArchivedFalseAndEmailIgnoreCaseAndIdNot(email, id)) {
+      throw new ConflictException("Email already exists");
+    }
+
     PersonEntity entity = personRepository.findById(id).orElseThrow();
     entity.setLastName(request.lastName());
     entity.setFirstName(request.firstName());
@@ -107,6 +130,28 @@ public class PersonService {
     PersonEntity entity = personRepository.findById(id).orElseThrow();
     entity.setArchived(archived);
     return toResponse(entity);
+  }
+
+  private static String normalizePhone(String phone) {
+    if (phone == null) {
+      return null;
+    }
+    String trimmed = phone.trim();
+    if (trimmed.isEmpty()) {
+      return null;
+    }
+    return trimmed.replaceAll("[\\s\\-()]", "");
+  }
+
+  private static String normalizeEmail(String email) {
+    if (email == null) {
+      return null;
+    }
+    String trimmed = email.trim();
+    if (trimmed.isEmpty()) {
+      return null;
+    }
+    return trimmed.toLowerCase();
   }
 
 }
