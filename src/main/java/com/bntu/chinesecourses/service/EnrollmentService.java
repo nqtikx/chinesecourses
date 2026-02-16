@@ -85,4 +85,12 @@ public class EnrollmentService {
         entity.getCreatedAt()
     );
   }
+
+  @Transactional
+  public EnrollmentResponse archive(Long id) {
+    EnrollmentEntity entity = enrollmentRepository.findById(id).orElseThrow();
+    entity.setArchived(true);
+    return toResponse(entity);
+  }
+
 }

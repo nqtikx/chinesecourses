@@ -1,5 +1,6 @@
 package com.bntu.chinesecourses.controller;
 
+import com.bntu.chinesecourses.model.dto.ArchiveRequest;
 import com.bntu.chinesecourses.model.dto.PersonCreateRequest;
 import com.bntu.chinesecourses.model.dto.PersonResponse;
 import com.bntu.chinesecourses.model.dto.PersonUpdateRequest;
@@ -7,6 +8,7 @@ import com.bntu.chinesecourses.service.PersonService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -47,5 +49,8 @@ public class PersonController {
     return personService.searchByLastNamePrefix(lastNamePrefix);
   }
 
-
+  @PatchMapping("/{id}/archive")
+  public PersonResponse setArchived(@PathVariable Long id, @RequestBody ArchiveRequest request) {
+    return personService.setArchived(id, request.archived());
+  }
 }

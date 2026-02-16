@@ -1,5 +1,6 @@
 package com.bntu.chinesecourses.service;
 
+import com.bntu.chinesecourses.exception.NotFoundException;
 import com.bntu.chinesecourses.model.dto.PersonCreateRequest;
 import com.bntu.chinesecourses.model.dto.PersonResponse;
 import com.bntu.chinesecourses.model.dto.PersonUpdateRequest;
@@ -60,15 +61,25 @@ public class PersonService {
   @Transactional(readOnly = true)
   public List<PersonResponse> searchByLastNamePrefix(String prefix) {
     if (prefix == null || prefix.isBlank()) {
-      return List.of();
+      return personRepository.findTop50ByArchivedFalseOrderByLastNameAscFirstNameAsc()
+          .stream()
+          .map(PersonService::toResponse)
+          .toList();
     }
 
-    return personRepository
+    List<PersonResponse> result = personRepository
         .findTop50ByArchivedFalseAndLastNameStartingWithIgnoreCaseOrderByLastNameAscFirstNameAsc(prefix.trim())
         .stream()
         .map(PersonService::toResponse)
         .toList();
+
+    if (result.isEmpty()) {
+      throw new NotFoundException("Persons not found by lastNamePrefix: " + prefix.trim());
+    }
+
+    return result;
   }
+
 
   private static PersonResponse toResponse(PersonEntity entity) {
     return new PersonResponse(
@@ -83,4 +94,19 @@ public class PersonService {
         entity.getCreatedAt()
     );
   }
+
+  @Transactional
+  public PersonResponse archive(Long id) {
+    PersonEntity entity = personRepository.findById(id).orElseThrow();
+    entity.setArchived(true);
+    return toResponse(entity);
+  }
+
+  @Transactional
+  public PersonResponse setArchived(Long id, boolean archived) {
+    PersonEntity entity = personRepository.findById(id).orElseThrow();
+    entity.setArchived(archived);
+    return toResponse(entity);
+  }
+
 }

@@ -9,6 +9,7 @@ import com.bntu.chinesecourses.service.EnrollmentService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -52,4 +53,10 @@ public class EnrollmentController {
   ) {
     return enrollmentService.findTop50(semesterId, status, level);
   }
+
+  @PatchMapping("/{id}/archive")
+  public EnrollmentResponse archive(@PathVariable Long id) {
+    return enrollmentService.archive(id);
+  }
+
 }
