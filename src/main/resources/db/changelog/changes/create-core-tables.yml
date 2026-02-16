@@ -44,7 +44,7 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: timestamp with time zone
-                  defaultValueComputed: now()
+                  defaultValueComputed: "now()"
                   constraints:
                     nullable: false
 
@@ -99,7 +99,7 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: timestamp with time zone
-                  defaultValueComputed: now()
+                  defaultValueComputed: "now()"
                   constraints:
                     nullable: false
 
@@ -142,7 +142,7 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: timestamp with time zone
-                  defaultValueComputed: now()
+                  defaultValueComputed: "now()"
                   constraints:
                     nullable: false
 
@@ -194,7 +194,7 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: timestamp with time zone
-                  defaultValueComputed: now()
+                  defaultValueComputed: "now()"
                   constraints:
                     nullable: false
 
@@ -211,10 +211,12 @@ databaseChangeLog:
             columnNames: course_id, name
             constraintName: ux_semester_course_name
 
-        - addCheckConstraint:
-            tableName: semester
-            constraintName: ck_semester_dates
-            checkConstraint: "start_date <= end_date"
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: >
+              ALTER TABLE semester
+              ADD CONSTRAINT ck_semester_dates CHECK (start_date <= end_date);
 
         - createIndex:
             tableName: semester
@@ -262,7 +264,7 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: timestamp with time zone
-                  defaultValueComputed: now()
+                  defaultValueComputed: "now()"
                   constraints:
                     nullable: false
 
@@ -349,7 +351,7 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: timestamp with time zone
-                  defaultValueComputed: now()
+                  defaultValueComputed: "now()"
                   constraints:
                     nullable: false
 

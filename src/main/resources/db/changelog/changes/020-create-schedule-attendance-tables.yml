@@ -51,7 +51,7 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: timestamp with time zone
-                  defaultValueComputed: now()
+                  defaultValueComputed: "now()"
                   constraints:
                     nullable: false
 
@@ -63,15 +63,19 @@ databaseChangeLog:
             constraintName: fk_rule_group
             onDelete: restrict
 
-        - addCheckConstraint:
-            tableName: group_schedule_rule
-            constraintName: ck_rule_time
-            checkConstraint: "start_time < end_time"
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: >
+              ALTER TABLE group_schedule_rule
+              ADD CONSTRAINT ck_rule_time CHECK (start_time < end_time);
 
-        - addCheckConstraint:
-            tableName: group_schedule_rule
-            constraintName: ck_rule_day_of_week
-            checkConstraint: "day_of_week between 1 and 7"
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: >
+              ALTER TABLE group_schedule_rule
+              ADD CONSTRAINT ck_rule_day_of_week CHECK (day_of_week BETWEEN 1 AND 7);
 
         - createIndex:
             tableName: group_schedule_rule
@@ -133,7 +137,7 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: timestamp with time zone
-                  defaultValueComputed: now()
+                  defaultValueComputed: "now()"
                   constraints:
                     nullable: false
 
@@ -153,10 +157,12 @@ databaseChangeLog:
             constraintName: fk_lesson_teacher
             onDelete: set null
 
-        - addCheckConstraint:
-            tableName: lesson_session
-            constraintName: ck_lesson_time
-            checkConstraint: "starts_at < ends_at"
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: >
+              ALTER TABLE lesson_session
+              ADD CONSTRAINT ck_lesson_time CHECK (starts_at < ends_at);
 
         - createIndex:
             tableName: lesson_session
@@ -209,7 +215,7 @@ databaseChangeLog:
               - column:
                   name: marked_at
                   type: timestamp with time zone
-                  defaultValueComputed: now()
+                  defaultValueComputed: "now()"
                   constraints:
                     nullable: false
               - column:
@@ -221,7 +227,7 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: timestamp with time zone
-                  defaultValueComputed: now()
+                  defaultValueComputed: "now()"
                   constraints:
                     nullable: false
 
