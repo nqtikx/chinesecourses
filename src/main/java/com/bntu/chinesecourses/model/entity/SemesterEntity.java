@@ -2,12 +2,9 @@ package com.bntu.chinesecourses.model.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -20,9 +17,8 @@ public class SemesterEntity {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "course_id", nullable = false)
-  private CourseEntity course;
+  @Column(name = "course_id", nullable = false)
+  private Long courseId;
 
   @Column(name = "name", nullable = false, length = 256)
   private String name;
@@ -44,7 +40,7 @@ public class SemesterEntity {
 
   public SemesterEntity(
       Long id,
-      CourseEntity course,
+      Long courseId,
       String name,
       LocalDate startDate,
       LocalDate endDate,
@@ -52,7 +48,7 @@ public class SemesterEntity {
       Instant createdAt
   ) {
     this.id = id;
-    this.course = course;
+    this.courseId = courseId;
     this.name = name;
     this.startDate = startDate;
     this.endDate = endDate;
@@ -64,8 +60,8 @@ public class SemesterEntity {
     return id;
   }
 
-  public CourseEntity getCourse() {
-    return course;
+  public Long getCourseId() {
+    return courseId;
   }
 
   public String getName() {
@@ -88,8 +84,8 @@ public class SemesterEntity {
     return createdAt;
   }
 
-  public void setCourse(CourseEntity course) {
-    this.course = course;
+  public void setCourseId(Long courseId) {
+    this.courseId = courseId;
   }
 
   public void setName(String name) {
