@@ -2,13 +2,12 @@ package com.bntu.chinesecourses.model.dto;
 
 import com.bntu.chinesecourses.model.entity.ChineseLevel;
 import com.bntu.chinesecourses.model.entity.EnrollmentStatus;
-import java.util.UUID;
 
 public record EnrollmentCreateRequest(
-    UUID studentId,
-    UUID payerId,
-    UUID semesterId,
-    UUID groupId,
+    Long studentId,
+    Long payerId,
+    Long semesterId,
+    Long groupId,
     EnrollmentStatus status,
     ChineseLevel level
 ) {

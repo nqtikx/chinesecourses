@@ -5,7 +5,6 @@ import com.bntu.chinesecourses.model.dto.PersonResponse;
 import com.bntu.chinesecourses.model.dto.PersonUpdateRequest;
 import com.bntu.chinesecourses.service.PersonService;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,12 +33,12 @@ public class PersonController {
   }
 
   @GetMapping("/{id}")
-  public PersonResponse get(@PathVariable UUID id) {
+  public PersonResponse get(@PathVariable Long id) {
     return personService.get(id);
   }
 
   @PutMapping("/{id}")
-  public PersonResponse update(@PathVariable UUID id, @RequestBody PersonUpdateRequest request) {
+  public PersonResponse update(@PathVariable Long id, @RequestBody PersonUpdateRequest request) {
     return personService.update(id, request);
   }
 
@@ -47,4 +46,6 @@ public class PersonController {
   public List<PersonResponse> search(@RequestParam(name = "lastNamePrefix", required = false) String lastNamePrefix) {
     return personService.searchByLastNamePrefix(lastNamePrefix);
   }
+
+
 }

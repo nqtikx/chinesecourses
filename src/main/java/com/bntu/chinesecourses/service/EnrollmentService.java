@@ -1,5 +1,6 @@
 package com.bntu.chinesecourses.service;
 
+import com.bntu.chinesecourses.exception.ConflictException;
 import com.bntu.chinesecourses.model.dto.EnrollmentCreateRequest;
 import com.bntu.chinesecourses.model.dto.EnrollmentResponse;
 import com.bntu.chinesecourses.model.dto.EnrollmentUpdateRequest;
@@ -9,7 +10,6 @@ import com.bntu.chinesecourses.model.entity.EnrollmentStatus;
 import com.bntu.chinesecourses.repository.EnrollmentRepository;
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +24,12 @@ public class EnrollmentService {
 
   @Transactional
   public EnrollmentResponse create(EnrollmentCreateRequest request) {
+    if (enrollmentRepository.existsByArchivedFalseAndStudentIdAndSemesterId(request.studentId(), request.semesterId())) {
+      throw new ConflictException("Enrollment already exists for studentId=" + request.studentId()
+          + " and semesterId=" + request.semesterId());
+    }
     EnrollmentEntity entity = new EnrollmentEntity(
-        UUID.randomUUID(),
+        null,
         request.studentId(),
         request.payerId(),
         request.semesterId(),
@@ -41,14 +45,14 @@ public class EnrollmentService {
   }
 
   @Transactional(readOnly = true)
-  public EnrollmentResponse get(UUID id) {
+  public EnrollmentResponse get(Long id) {
     return enrollmentRepository.findById(id)
         .map(EnrollmentService::toResponse)
         .orElseThrow();
   }
 
   @Transactional
-  public EnrollmentResponse update(UUID id, EnrollmentUpdateRequest request) {
+  public EnrollmentResponse update(Long id, EnrollmentUpdateRequest request) {
     EnrollmentEntity entity = enrollmentRepository.findById(id).orElseThrow();
     entity.setPayerId(request.payerId());
     entity.setSemesterId(request.semesterId());
@@ -60,7 +64,7 @@ public class EnrollmentService {
   }
 
   @Transactional(readOnly = true)
-  public List<EnrollmentResponse> findTop50(UUID semesterId, EnrollmentStatus status, ChineseLevel level) {
+  public List<EnrollmentResponse> findTop50(Long semesterId, EnrollmentStatus status, ChineseLevel level) {
     return enrollmentRepository
         .findTop50ByArchivedFalseAndSemesterIdAndStatusAndLevelOrderByCreatedAtDesc(semesterId, status, level)
         .stream()

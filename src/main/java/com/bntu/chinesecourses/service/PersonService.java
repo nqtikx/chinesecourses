@@ -7,7 +7,6 @@ import com.bntu.chinesecourses.model.entity.PersonEntity;
 import com.bntu.chinesecourses.repository.PersonRepository;
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,9 +21,8 @@ public class PersonService {
 
   @Transactional
   public PersonResponse create(PersonCreateRequest request) {
-    UUID id = UUID.randomUUID();
     PersonEntity entity = new PersonEntity(
-        id,
+        null,
         request.lastName(),
         request.firstName(),
         request.middleName(),
@@ -40,14 +38,14 @@ public class PersonService {
   }
 
   @Transactional(readOnly = true)
-  public PersonResponse get(UUID id) {
+  public PersonResponse get(Long id) {
     return personRepository.findById(id)
         .map(PersonService::toResponse)
         .orElseThrow();
   }
 
   @Transactional
-  public PersonResponse update(UUID id, PersonUpdateRequest request) {
+  public PersonResponse update(Long id, PersonUpdateRequest request) {
     PersonEntity entity = personRepository.findById(id).orElseThrow();
     entity.setLastName(request.lastName());
     entity.setFirstName(request.firstName());

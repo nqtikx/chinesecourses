@@ -4,17 +4,19 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.UUID;
 
 @Entity
 @Table(name = "admin_user")
 public class AdminUserEntity {
 
   @Id
-  private UUID id;
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
   @Column(name = "username", nullable = false, unique = true, length = 128)
   private String username;
@@ -32,7 +34,7 @@ public class AdminUserEntity {
   protected AdminUserEntity() {
   }
 
-  public AdminUserEntity(UUID id, String username, String passwordHash, AdminRole role, Instant createdAt) {
+  public AdminUserEntity(Long id, String username, String passwordHash, AdminRole role, Instant createdAt) {
     this.id = id;
     this.username = username;
     this.passwordHash = passwordHash;
@@ -40,7 +42,7 @@ public class AdminUserEntity {
     this.createdAt = createdAt;
   }
 
-  public UUID getId() {
+  public Long getId() {
     return id;
   }
 

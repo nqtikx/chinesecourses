@@ -8,7 +8,8 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: uuid
+                  type: bigint
+                  autoIncrement: true
                   constraints:
                     primaryKey: true
                     nullable: false
@@ -80,7 +81,8 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: uuid
+                  type: bigint
+                  autoIncrement: true
                   constraints:
                     primaryKey: true
                     nullable: false
@@ -126,13 +128,14 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: uuid
+                  type: bigint
+                  autoIncrement: true
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
                   name: course_id
-                  type: uuid
+                  type: bigint
                   constraints:
                     nullable: false
               - column:
@@ -197,7 +200,8 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: uuid
+                  type: bigint
+                  autoIncrement: true
                   constraints:
                     primaryKey: true
                     nullable: false
@@ -228,18 +232,19 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: uuid
+                  type: bigint
+                  autoIncrement: true
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
                   name: semester_id
-                  type: uuid
+                  type: bigint
                   constraints:
                     nullable: false
               - column:
                   name: teacher_id
-                  type: uuid
+                  type: bigint
                   constraints:
                     nullable: true
               - column:
@@ -307,28 +312,29 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: uuid
+                  type: bigint
+                  autoIncrement: true
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
                   name: student_id
-                  type: uuid
+                  type: bigint
                   constraints:
                     nullable: false
               - column:
                   name: payer_id
-                  type: uuid
+                  type: bigint
                   constraints:
                     nullable: true
               - column:
                   name: semester_id
-                  type: uuid
+                  type: bigint
                   constraints:
                     nullable: false
               - column:
                   name: group_id
-                  type: uuid
+                  type: bigint
                   constraints:
                     nullable: true
               - column:
@@ -379,6 +385,10 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_enrollment_group
             onDelete: set null
+        - addUniqueConstraint:
+            tableName: enrollment
+            columnNames: student_id, semester_id
+            constraintName: ux_enrollment_student_semester
         - createIndex:
             tableName: enrollment
             indexName: ix_enrollment_student_id
@@ -409,3 +419,5 @@ databaseChangeLog:
             columns:
               - column:
                   name: level
+
+

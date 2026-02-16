@@ -2,18 +2,20 @@ package com.bntu.chinesecourses.model.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Entity
 @Table(name = "person")
 public class PersonEntity {
 
   @Id
-  private UUID id;
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
   @Column(name = "last_name", nullable = false, length = 128)
   private String lastName;
@@ -43,7 +45,7 @@ public class PersonEntity {
   }
 
   public PersonEntity(
-      UUID id,
+      Long id,
       String lastName,
       String firstName,
       String middleName,
@@ -64,7 +66,7 @@ public class PersonEntity {
     this.createdAt = createdAt;
   }
 
-  public UUID getId() {
+  public Long getId() {
     return id;
   }
 

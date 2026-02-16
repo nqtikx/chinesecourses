@@ -7,7 +7,6 @@ import com.bntu.chinesecourses.model.entity.ChineseLevel;
 import com.bntu.chinesecourses.model.entity.EnrollmentStatus;
 import com.bntu.chinesecourses.service.EnrollmentService;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,18 +35,18 @@ public class EnrollmentController {
   }
 
   @GetMapping("/{id}")
-  public EnrollmentResponse get(@PathVariable UUID id) {
+  public EnrollmentResponse get(@PathVariable Long id) {
     return enrollmentService.get(id);
   }
 
   @PutMapping("/{id}")
-  public EnrollmentResponse update(@PathVariable UUID id, @RequestBody EnrollmentUpdateRequest request) {
+  public EnrollmentResponse update(@PathVariable Long id, @RequestBody EnrollmentUpdateRequest request) {
     return enrollmentService.update(id, request);
   }
 
   @GetMapping
   public List<EnrollmentResponse> findTop50(
-      @RequestParam UUID semesterId,
+      @RequestParam Long semesterId,
       @RequestParam EnrollmentStatus status,
       @RequestParam ChineseLevel level
   ) {

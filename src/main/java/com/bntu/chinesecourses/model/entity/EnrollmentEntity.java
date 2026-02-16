@@ -4,29 +4,31 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.UUID;
 
 @Entity
 @Table(name = "enrollment")
 public class EnrollmentEntity {
 
   @Id
-  private UUID id;
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
   @Column(name = "student_id", nullable = false)
-  private UUID studentId;
+  private Long studentId;
 
   @Column(name = "payer_id")
-  private UUID payerId;
+  private Long payerId;
 
   @Column(name = "semester_id", nullable = false)
-  private UUID semesterId;
+  private Long semesterId;
 
   @Column(name = "group_id")
-  private UUID groupId;
+  private Long groupId;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false, length = 32)
@@ -46,11 +48,11 @@ public class EnrollmentEntity {
   }
 
   public EnrollmentEntity(
-      UUID id,
-      UUID studentId,
-      UUID payerId,
-      UUID semesterId,
-      UUID groupId,
+      Long id,
+      Long studentId,
+      Long payerId,
+      Long semesterId,
+      Long groupId,
       EnrollmentStatus status,
       ChineseLevel level,
       boolean archived,
@@ -67,23 +69,23 @@ public class EnrollmentEntity {
     this.createdAt = createdAt;
   }
 
-  public UUID getId() {
+  public Long getId() {
     return id;
   }
 
-  public UUID getStudentId() {
+  public Long getStudentId() {
     return studentId;
   }
 
-  public UUID getPayerId() {
+  public Long getPayerId() {
     return payerId;
   }
 
-  public UUID getSemesterId() {
+  public Long getSemesterId() {
     return semesterId;
   }
 
-  public UUID getGroupId() {
+  public Long getGroupId() {
     return groupId;
   }
 
@@ -103,15 +105,15 @@ public class EnrollmentEntity {
     return createdAt;
   }
 
-  public void setPayerId(UUID payerId) {
+  public void setPayerId(Long payerId) {
     this.payerId = payerId;
   }
 
-  public void setSemesterId(UUID semesterId) {
+  public void setSemesterId(Long semesterId) {
     this.semesterId = semesterId;
   }
 
-  public void setGroupId(UUID groupId) {
+  public void setGroupId(Long groupId) {
     this.groupId = groupId;
   }
 
