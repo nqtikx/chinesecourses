@@ -32,6 +32,6 @@ databaseChangeLog:
               - column:
                   name: created_at
                   type: timestamp with time zone
-                  defaultValueComputed: now()
+                  defaultValueComputed: "now()"
                   constraints:
                     nullable: false

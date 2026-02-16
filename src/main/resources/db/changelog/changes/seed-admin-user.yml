@@ -17,4 +17,4 @@ databaseChangeLog:
                   value: "ROLE_ADMIN"
               - column:
                   name: created_at
-                  valueComputed: now()
+                  valueComputed: "now()"
