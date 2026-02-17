@@ -8,7 +8,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface StudyGroupRepository extends JpaRepository<StudyGroupEntity, Long> {
 
   Optional<StudyGroupEntity> findByIdAndArchivedFalse(Long id);
-  List<StudyGroupEntity> findTop50ByArchivedFalseAndSemesterIdOrderByNameAsc(Long semesterId);
-  boolean existsByArchivedFalseAndSemesterIdAndNameIgnoreCase(Long semesterId, String name);
-  boolean existsByArchivedFalseAndSemesterIdAndNameIgnoreCaseAndIdNot(Long semesterId, String name, Long id);
+
+  List<StudyGroupEntity> findTop50ByArchivedFalseAndSemester_IdOrderByNameAsc(Long semesterId);
+
+  boolean existsByArchivedFalseAndSemester_IdAndNameIgnoreCase(Long semesterId, String name);
+
+  boolean existsByArchivedFalseAndSemester_IdAndNameIgnoreCaseAndIdNot(
+      Long semesterId,
+      String name,
+      Long id
+  );
 }

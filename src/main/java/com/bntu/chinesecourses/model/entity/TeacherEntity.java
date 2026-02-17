@@ -17,25 +17,24 @@ public class TeacherEntity {
   @Id
   private Long id;
 
-  @OneToOne(fetch = FetchType.LAZY, optional = false)
+  @OneToOne
   @MapsId
-  @JoinColumn(name = "id", nullable = false)
+  @JoinColumn(name = "id")
   private PersonEntity person;
+
 
   @Column(name = "archived", nullable = false)
   private boolean archived;
 
-  @Column(name = "created_at", nullable = false)
+  @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
   private Instant createdAt;
 
   protected TeacherEntity() {
   }
 
-  public TeacherEntity(Long id, PersonEntity person, boolean archived, Instant createdAt) {
-    this.id = id;
+  public TeacherEntity(PersonEntity person) {
     this.person = person;
-    this.archived = archived;
-    this.createdAt = createdAt;
+    this.archived = false;
   }
 
   public Long getId() {

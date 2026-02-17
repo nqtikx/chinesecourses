@@ -42,7 +42,7 @@ public class GroupScheduleRuleEntity {
   @Column(name = "archived", nullable = false)
   private boolean archived;
 
-  @Column(name = "created_at", nullable = false)
+  @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
   private Instant createdAt;
 
   protected GroupScheduleRuleEntity() {
