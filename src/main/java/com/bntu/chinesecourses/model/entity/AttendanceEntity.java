@@ -100,14 +100,6 @@ public class AttendanceEntity {
     return createdAt;
   }
 
-  public void setLessonSession(LessonSessionEntity lessonSession) {
-    this.lessonSession = lessonSession;
-  }
-
-  public void setEnrollment(EnrollmentEntity enrollment) {
-    this.enrollment = enrollment;
-  }
-
   public void setStatus(AttendanceStatus status) {
     this.status = status;
   }
