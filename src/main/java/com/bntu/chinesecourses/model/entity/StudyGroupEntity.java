@@ -60,8 +60,12 @@ public class StudyGroupEntity {
     this.createdAt = createdAt;
   }
 
-  public Long getSemesterId() {
+  public Long getId() {
     return id;
+  }
+
+  public Long getSemesterId() {
+    return semester.getId();
   }
 
   public SemesterEntity getSemester() {
