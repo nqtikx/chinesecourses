@@ -46,7 +46,7 @@ public class StudyGroupServiceImpl implements StudyGroupService {
 
     String name = normalizeName(request.name());
 
-    if (studyGroupRepository.existsByArchivedFalseAndSemesterIdAndNameIgnoreCase(semester.getId(), name)) {
+    if (studyGroupRepository.existsByArchivedFalseAndSemester_IdAndNameIgnoreCase(semester.getId(), name)) {
       throw new ConflictException("Study group already exists for semesterId=" + semester.getId() + " name=" + name);
     }
 
@@ -89,7 +89,7 @@ public class StudyGroupServiceImpl implements StudyGroupService {
 
     String name = normalizeName(request.name());
 
-    if (studyGroupRepository.existsByArchivedFalseAndSemesterIdAndNameIgnoreCaseAndIdNot(semester.getId(), name, id)) {
+    if (studyGroupRepository.existsByArchivedFalseAndSemester_IdAndNameIgnoreCaseAndIdNot(semester.getId(), name, id)) {
       throw new ConflictException("Study group already exists for semesterId=" + semester.getId() + " name=" + name);
     }
 
@@ -107,7 +107,7 @@ public class StudyGroupServiceImpl implements StudyGroupService {
   @Override
   @Transactional(readOnly = true)
   public List<StudyGroupResponse> findTop50BySemester(Long semesterId) {
-    return studyGroupRepository.findTop50ByArchivedFalseAndSemesterIdOrderByNameAsc(semesterId).stream()
+    return studyGroupRepository.findTop50ByArchivedFalseAndSemester_IdOrderByNameAsc(semesterId).stream()
         .map(StudyGroupServiceImpl::toResponse)
         .toList();
   }

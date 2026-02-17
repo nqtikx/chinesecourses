@@ -36,7 +36,7 @@ public class StudyGroupEntity {
   @Column(name = "archived", nullable = false)
   private boolean archived;
 
-  @Column(name = "created_at", nullable = false)
+  @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
   private Instant createdAt;
 
   protected StudyGroupEntity() {
@@ -65,7 +65,7 @@ public class StudyGroupEntity {
   }
 
   public Long getSemesterId() {
-    return semester.getId();
+    return semester != null ? semester.getId() : null;
   }
 
   public SemesterEntity getSemester() {
