@@ -2,14 +2,14 @@ package com.bntu.chinesecourses.model.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 
@@ -29,9 +29,8 @@ public class AttendanceEntity {
   @JoinColumn(name = "enrollment_id", nullable = false)
   private EnrollmentEntity enrollment;
 
-  @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false, length = 16)
-  private AttendanceStatus status;
+  private String status;
 
   @Column(name = "comment", length = 256)
   private String comment;
@@ -52,7 +51,7 @@ public class AttendanceEntity {
       Long id,
       LessonSessionEntity lessonSession,
       EnrollmentEntity enrollment,
-      AttendanceStatus status,
+      String status,
       String comment,
       Instant markedAt,
       boolean archived,
@@ -68,6 +67,24 @@ public class AttendanceEntity {
     this.createdAt = createdAt;
   }
 
+  @PrePersist
+  protected void onCreate() {
+    Instant now = Instant.now();
+    if (createdAt == null) {
+      createdAt = now;
+    }
+    if (markedAt == null) {
+      markedAt = now;
+    }
+  }
+
+  @PreUpdate
+  protected void onUpdate() {
+    if (markedAt == null) {
+      markedAt = Instant.now();
+    }
+  }
+
   public Long getId() {
     return id;
   }
@@ -80,7 +97,7 @@ public class AttendanceEntity {
     return enrollment;
   }
 
-  public AttendanceStatus getStatus() {
+  public String getStatus() {
     return status;
   }
 
@@ -100,7 +117,15 @@ public class AttendanceEntity {
     return createdAt;
   }
 
-  public void setStatus(AttendanceStatus status) {
+  public void setLessonSession(LessonSessionEntity lessonSession) {
+    this.lessonSession = lessonSession;
+  }
+
+  public void setEnrollment(EnrollmentEntity enrollment) {
+    this.enrollment = enrollment;
+  }
+
+  public void setStatus(String status) {
     this.status = status;
   }
 
