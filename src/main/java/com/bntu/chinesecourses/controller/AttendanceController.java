@@ -5,6 +5,7 @@ import com.bntu.chinesecourses.model.dto.AttendanceUpsertRequest;
 import com.bntu.chinesecourses.service.AttendanceService;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/lesson-sessions/{lessonSessionId}/attendance")
+@RequestMapping("/lessons/{lessonSessionId}/attendance")
 public class AttendanceController {
 
   private final AttendanceService attendanceService;
@@ -23,11 +24,13 @@ public class AttendanceController {
   }
 
   @GetMapping
+  @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
   public List<AttendanceResponse> list(@PathVariable Long lessonSessionId) {
     return attendanceService.listLessonAttendance(lessonSessionId);
   }
 
   @PutMapping
+  @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
   public AttendanceResponse upsert(
       @PathVariable Long lessonSessionId,
       @RequestBody @Valid AttendanceUpsertRequest request
