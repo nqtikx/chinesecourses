@@ -18,7 +18,7 @@ public class AdminUserEntity {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(name = "username", nullable = false, length = 128, unique = true)
+  @Column(name = "username", nullable = false, unique = true, length = 128)
   private String username;
 
   @Column(name = "password_hash", nullable = false, length = 128)
@@ -26,29 +26,19 @@ public class AdminUserEntity {
 
   @Enumerated(EnumType.STRING)
   @Column(name = "role", nullable = false, length = 64)
-  private UserRole role;
-
-  @Column(name = "person_id")
-  private Long personId;
+  private AdminRole role;
 
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
-  protected AdminUserEntity() {}
+  protected AdminUserEntity() {
+  }
 
-  public AdminUserEntity(
-      Long id,
-      String username,
-      String passwordHash,
-      UserRole role,
-      Long personId,
-      Instant createdAt
-  ) {
+  public AdminUserEntity(Long id, String username, String passwordHash, AdminRole role, Instant createdAt) {
     this.id = id;
     this.username = username;
     this.passwordHash = passwordHash;
     this.role = role;
-    this.personId = personId;
     this.createdAt = createdAt;
   }
 
@@ -64,27 +54,11 @@ public class AdminUserEntity {
     return passwordHash;
   }
 
-  public UserRole getRole() {
+  public AdminRole getRole() {
     return role;
-  }
-
-  public Long getPersonId() {
-    return personId;
   }
 
   public Instant getCreatedAt() {
     return createdAt;
-  }
-
-  public void setPasswordHash(String passwordHash) {
-    this.passwordHash = passwordHash;
-  }
-
-  public void setRole(UserRole role) {
-    this.role = role;
-  }
-
-  public void setPersonId(Long personId) {
-    this.personId = personId;
   }
 }

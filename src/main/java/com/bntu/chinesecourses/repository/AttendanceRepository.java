@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AttendanceRepository extends JpaRepository<AttendanceEntity, Long> {
 
-  List<AttendanceEntity> findTop200ByLessonSessionIdAndArchivedFalseOrderByIdAsc(Long lessonSessionId);
-  Optional<AttendanceEntity> findByLessonSessionIdAndEnrollmentId(Long lessonSessionId, Long enrollmentId);
+  Optional<AttendanceEntity> findByIdAndArchivedFalse(Long id);
+  List<AttendanceEntity> findTop50ByArchivedFalseAndLessonSessionIdOrderByMarkedAtDesc(Long lessonSessionId);
+  List<AttendanceEntity> findTop50ByArchivedFalseAndEnrollmentIdOrderByMarkedAtDesc(Long enrollmentId);
 }

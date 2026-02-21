@@ -1,22 +1,20 @@
 package com.bntu.chinesecourses.service.impl;
 
+import com.bntu.chinesecourses.exception.BadRequestException;
+import com.bntu.chinesecourses.exception.ConflictException;
+import com.bntu.chinesecourses.exception.NotFoundException;
+import com.bntu.chinesecourses.model.dto.AttendanceCreateRequest;
 import com.bntu.chinesecourses.model.dto.AttendanceResponse;
-import com.bntu.chinesecourses.model.dto.AttendanceUpsertRequest;
+import com.bntu.chinesecourses.model.dto.AttendanceUpdateRequest;
 import com.bntu.chinesecourses.model.entity.AttendanceEntity;
 import com.bntu.chinesecourses.model.entity.EnrollmentEntity;
 import com.bntu.chinesecourses.model.entity.LessonSessionEntity;
-import com.bntu.chinesecourses.model.entity.StudyGroupEntity;
-import com.bntu.chinesecourses.model.entity.TeacherEntity;
-import com.bntu.chinesecourses.model.entity.UserRole;
 import com.bntu.chinesecourses.repository.AttendanceRepository;
 import com.bntu.chinesecourses.repository.EnrollmentRepository;
 import com.bntu.chinesecourses.repository.LessonSessionRepository;
-import com.bntu.chinesecourses.security.SecurityPrincipal;
-import com.bntu.chinesecourses.security.SecurityUtils;
 import com.bntu.chinesecourses.service.AttendanceService;
 import java.time.Instant;
 import java.util.List;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,118 +36,105 @@ public class AttendanceServiceImpl implements AttendanceService {
   }
 
   @Override
+  @Transactional
+  public AttendanceResponse create(AttendanceCreateRequest request) {
+    LessonSessionEntity lesson = lessonSessionRepository.findByIdAndArchivedFalse(request.lessonSessionId())
+        .orElseThrow(() -> new NotFoundException("Lesson session not found: id=" + request.lessonSessionId()));
+
+    if (lesson.isCanceled()) {
+      throw new ConflictException("Cannot mark attendance for canceled lesson: id=" + lesson.getId());
+    }
+
+    EnrollmentEntity enrollment = enrollmentRepository.findById(request.enrollmentId())
+        .orElseThrow(() -> new NotFoundException("Enrollment not found: id=" + request.enrollmentId()));
+
+    if (enrollment.isArchived()) {
+      throw new ConflictException("Cannot mark attendance for archived enrollment: id=" + enrollment.getId());
+    }
+
+    Long enrollmentGroupId = enrollment.getGroupId();
+    Long lessonGroupId = lesson.getGroup().getId();
+
+    if (enrollmentGroupId == null) {
+      throw new BadRequestException("Enrollment has no group assigned: enrollmentId=" + enrollment.getId());
+    }
+
+    if (!enrollmentGroupId.equals(lessonGroupId)) {
+      throw new BadRequestException("Enrollment group does not match lesson group");
+    }
+
+    AttendanceEntity entity = new AttendanceEntity(
+        null,
+        lesson,
+        enrollment,
+        request.status(),
+        normalizeComment(request.comment()),
+        Instant.now(),
+        false,
+        Instant.now()
+    );
+
+    AttendanceEntity saved = attendanceRepository.save(entity);
+    return toResponse(saved);
+  }
+
+  @Override
   @Transactional(readOnly = true)
-  public List<AttendanceResponse> listLessonAttendance(Long lessonSessionId) {
-    requireTeacherOrAdminCanAccessLesson(lessonSessionId, false);
-    return attendanceRepository
-        .findTop200ByLessonSessionIdAndArchivedFalseOrderByIdAsc(lessonSessionId)
-        .stream()
-        .map(this::toDto)
+  public AttendanceResponse get(Long id) {
+    AttendanceEntity entity = attendanceRepository.findByIdAndArchivedFalse(id)
+        .orElseThrow(() -> new NotFoundException("Attendance not found: id=" + id));
+    return toResponse(entity);
+  }
+
+  @Override
+  @Transactional
+  public AttendanceResponse update(Long id, AttendanceUpdateRequest request) {
+    AttendanceEntity entity = attendanceRepository.findById(id)
+        .orElseThrow(() -> new NotFoundException("Attendance not found: id=" + id));
+
+    entity.setStatus(request.status());
+    entity.setComment(normalizeComment(request.comment()));
+    entity.setMarkedAt(Instant.now());
+    entity.setArchived(request.archived());
+
+    return toResponse(entity);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<AttendanceResponse> findTop50ByLessonSession(Long lessonSessionId) {
+    return attendanceRepository.findTop50ByArchivedFalseAndLessonSessionIdOrderByMarkedAtDesc(lessonSessionId).stream()
+        .map(AttendanceServiceImpl::toResponse)
+        .toList();
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<AttendanceResponse> findTop50ByEnrollment(Long enrollmentId) {
+    return attendanceRepository.findTop50ByArchivedFalseAndEnrollmentIdOrderByMarkedAtDesc(enrollmentId).stream()
+        .map(AttendanceServiceImpl::toResponse)
         .toList();
   }
 
   @Override
   @Transactional
-  public AttendanceResponse upsertAttendance(Long lessonSessionId, AttendanceUpsertRequest request) {
-    requireTeacherOrAdminCanAccessLesson(lessonSessionId, true);
-
-    LessonSessionEntity lesson =
-        lessonSessionRepository
-            .findByIdAndArchivedFalse(lessonSessionId)
-            .orElseThrow(() -> new IllegalArgumentException("Lesson session not found: " + lessonSessionId));
-
-    EnrollmentEntity enrollment =
-        enrollmentRepository
-            .findByIdAndArchivedFalse(request.enrollmentId())
-            .orElseThrow(() -> new IllegalArgumentException("Enrollment not found: " + request.enrollmentId()));
-
-    validateEnrollmentBelongsToLessonGroup(enrollment, lesson);
-
-    AttendanceEntity entity =
-        attendanceRepository
-            .findByLessonSessionIdAndEnrollmentId(lessonSessionId, request.enrollmentId())
-            .orElseGet(() -> new AttendanceEntity(
-                null,
-                lesson,
-                enrollment,
-                request.status(),
-                request.comment(),
-                Instant.now(),
-                false,
-                Instant.now()
-            ));
-
-    entity.setStatus(request.status());
-    entity.setComment(request.comment());
+  public AttendanceResponse setArchived(Long id, boolean archived) {
+    AttendanceEntity entity = attendanceRepository.findById(id)
+        .orElseThrow(() -> new NotFoundException("Attendance not found: id=" + id));
+    entity.setArchived(archived);
     entity.setMarkedAt(Instant.now());
-
-    AttendanceEntity saved = attendanceRepository.save(entity);
-    return toDto(saved);
+    return toResponse(entity);
   }
 
-  private void requireTeacherOrAdminCanAccessLesson(Long lessonSessionId, boolean write) {
-    SecurityPrincipal principal = SecurityUtils.requirePrincipal();
-    if (principal.getRole() == UserRole.ADMIN) {
-      return;
+  private static String normalizeComment(String comment) {
+    if (comment == null) {
+      return null;
     }
-    if (principal.getRole() != UserRole.TEACHER) {
-      throw new AccessDeniedException("Forbidden");
-    }
-    if (principal.getPersonId() == null) {
-      throw new AccessDeniedException("Teacher is not linked to person");
-    }
-
-    LessonSessionEntity lesson =
-        lessonSessionRepository
-            .findByIdAndArchivedFalse(lessonSessionId)
-            .orElseThrow(() -> new IllegalArgumentException("Lesson session not found: " + lessonSessionId));
-
-    Long teacherId = principal.getPersonId();
-
-    if (write) {
-      boolean owned = isLessonOwnedByTeacher(lesson, teacherId);
-      if (!owned) {
-        throw new AccessDeniedException("Teacher cannot modify attendance for this lesson");
-      }
-      return;
-    }
-
-    boolean ok = isLessonOwnedByTeacher(lesson, teacherId) || isTeacherLinkedToGroup(lesson, teacherId);
-    if (!ok) {
-      throw new AccessDeniedException("Teacher cannot access this lesson");
-    }
+    String trimmed = comment.trim();
+    return trimmed.isEmpty() ? null : trimmed;
   }
 
-  private boolean isLessonOwnedByTeacher(LessonSessionEntity lesson, Long teacherId) {
-    TeacherEntity lessonTeacher = lesson.getTeacher();
-    if (lessonTeacher == null) {
-      return false;
-    }
-    return teacherId.equals(lessonTeacher.getId());
-  }
-
-  private boolean isTeacherLinkedToGroup(LessonSessionEntity lesson, Long teacherId) {
-    StudyGroupEntity group = lesson.getGroup();
-    if (group == null || group.getTeacher() == null) {
-      return false;
-    }
-    return teacherId.equals(group.getTeacher().getId());
-  }
-
-  private void validateEnrollmentBelongsToLessonGroup(EnrollmentEntity enrollment, LessonSessionEntity lesson) {
-    StudyGroupEntity lessonGroup = lesson.getGroup();
-    if (lessonGroup == null) {
-      throw new IllegalArgumentException("Lesson session has no group");
-    }
-    if (enrollment.getGroupId() == null) {
-      throw new IllegalArgumentException("Enrollment has no group assigned");
-    }
-    if (!lessonGroup.getId().equals(enrollment.getGroupId())) {
-      throw new IllegalArgumentException("Enrollment does not belong to this lesson group");
-    }
-  }
-
-  private AttendanceResponse toDto(AttendanceEntity entity) {
+  private static AttendanceResponse toResponse(AttendanceEntity entity) {
     return new AttendanceResponse(
         entity.getId(),
         entity.getLessonSession().getId(),
@@ -157,6 +142,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         entity.getStatus(),
         entity.getComment(),
         entity.getMarkedAt(),
+        entity.isArchived(),
         entity.getCreatedAt()
     );
   }
