@@ -2,6 +2,7 @@ package com.bntu.chinesecourses.service;
 
 import com.bntu.chinesecourses.exception.ConflictException;
 import com.bntu.chinesecourses.exception.NotFoundException;
+import org.springframework.security.access.AccessDeniedException;
 import com.bntu.chinesecourses.model.dto.EnrollmentCreateRequest;
 import com.bntu.chinesecourses.model.dto.EnrollmentResponse;
 import com.bntu.chinesecourses.model.dto.EnrollmentUpdateRequest;
@@ -85,14 +86,30 @@ public class EnrollmentService {
 
   @Transactional(readOnly = true)
   public EnrollmentResponse get(Long id) {
-    return enrollmentRepository.findById(id)
-        .map(EnrollmentService::toResponse)
-        .orElseThrow();
+    return get(id, null);
+  }
+
+  @Transactional(readOnly = true)
+  public EnrollmentResponse get(Long id, Long teacherIdFilter) {
+    EnrollmentEntity entity = enrollmentRepository.findById(id)
+        .orElseThrow(() -> new NotFoundException("Enrollment not found: id=" + id));
+    if (teacherIdFilter != null && entity.getGroupId() != null) {
+      StudyGroupEntity group = studyGroupRepository.findByIdAndArchivedFalse(entity.getGroupId())
+          .orElseThrow(() -> new NotFoundException("Study group not found: id=" + entity.getGroupId()));
+      Long groupTeacherId = group.getTeacher() == null ? null : group.getTeacher().getId();
+      if (!teacherIdFilter.equals(groupTeacherId)) {
+        throw new AccessDeniedException("Enrollment does not belong to current teacher's groups");
+      }
+    } else if (teacherIdFilter != null && entity.getGroupId() == null) {
+      throw new AccessDeniedException("Enrollment has no group");
+    }
+    return toResponse(entity);
   }
 
   @Transactional
   public EnrollmentResponse update(Long id, EnrollmentUpdateRequest request) {
-    EnrollmentEntity entity = enrollmentRepository.findById(id).orElseThrow();
+    EnrollmentEntity entity = enrollmentRepository.findById(id)
+        .orElseThrow(() -> new NotFoundException("Enrollment not found: id=" + id));
     entity.setPayerId(request.payerId());
     entity.setSemesterId(request.semesterId());
     entity.setGroupId(request.groupId());
@@ -107,6 +124,23 @@ public class EnrollmentService {
     return enrollmentRepository
         .findTop50ByArchivedFalseAndSemesterIdAndStatusAndLevelOrderByCreatedAtDesc(semesterId, status, level)
         .stream()
+        .map(EnrollmentService::toResponse)
+        .toList();
+  }
+
+  /** List enrollments by group. When teacherIdFilter is non-null, group must belong to that teacher. */
+  @Transactional(readOnly = true)
+  public List<EnrollmentResponse> findTop50ByGroupId(Long groupId, Long teacherIdFilter) {
+    if (teacherIdFilter != null) {
+      StudyGroupEntity group = studyGroupRepository.findByIdAndArchivedFalse(groupId)
+          .orElseThrow(() -> new NotFoundException("Study group not found: id=" + groupId));
+      Long groupTeacherId = group.getTeacher() == null ? null : group.getTeacher().getId();
+      if (!teacherIdFilter.equals(groupTeacherId)) {
+        throw new org.springframework.security.access.AccessDeniedException(
+            "Group does not belong to current teacher");
+      }
+    }
+    return enrollmentRepository.findTop50ByArchivedFalseAndGroupIdOrderByCreatedAtDesc(groupId).stream()
         .map(EnrollmentService::toResponse)
         .toList();
   }
@@ -127,7 +161,8 @@ public class EnrollmentService {
 
   @Transactional
   public EnrollmentResponse setArchived(Long id, boolean archived) {
-    EnrollmentEntity entity = enrollmentRepository.findById(id).orElseThrow();
+    EnrollmentEntity entity = enrollmentRepository.findById(id)
+        .orElseThrow(() -> new NotFoundException("Enrollment not found: id=" + id));
     entity.setArchived(archived);
     return toResponse(entity);
   }

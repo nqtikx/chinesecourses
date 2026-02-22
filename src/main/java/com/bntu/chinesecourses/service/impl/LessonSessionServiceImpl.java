@@ -3,6 +3,7 @@ package com.bntu.chinesecourses.service.impl;
 import com.bntu.chinesecourses.exception.BadRequestException;
 import com.bntu.chinesecourses.exception.ConflictException;
 import com.bntu.chinesecourses.exception.NotFoundException;
+import org.springframework.security.access.AccessDeniedException;
 import com.bntu.chinesecourses.model.dto.LessonSessionCreateRequest;
 import com.bntu.chinesecourses.model.dto.LessonSessionResponse;
 import com.bntu.chinesecourses.model.dto.LessonSessionUpdateRequest;
@@ -65,8 +66,21 @@ public class LessonSessionServiceImpl implements LessonSessionService {
   @Override
   @Transactional(readOnly = true)
   public LessonSessionResponse get(Long id) {
+    return get(id, null);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public LessonSessionResponse get(Long id, Long teacherIdFilter) {
     LessonSessionEntity entity = lessonSessionRepository.findByIdAndArchivedFalse(id)
         .orElseThrow(() -> new NotFoundException("Lesson session not found: id=" + id));
+    if (teacherIdFilter != null) {
+      StudyGroupEntity group = entity.getGroup();
+      Long groupTeacherId = group.getTeacher() == null ? null : group.getTeacher().getId();
+      if (!teacherIdFilter.equals(groupTeacherId)) {
+        throw new AccessDeniedException("Lesson session does not belong to current teacher's groups");
+      }
+    }
     return toResponse(entity);
   }
 
@@ -98,6 +112,20 @@ public class LessonSessionServiceImpl implements LessonSessionService {
   @Override
   @Transactional(readOnly = true)
   public List<LessonSessionResponse> findTop50ByGroup(Long groupId) {
+    return findTop50ByGroup(groupId, null);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<LessonSessionResponse> findTop50ByGroup(Long groupId, Long teacherIdFilter) {
+    if (teacherIdFilter != null) {
+      StudyGroupEntity group = studyGroupRepository.findByIdAndArchivedFalse(groupId)
+          .orElseThrow(() -> new NotFoundException("Study group not found: id=" + groupId));
+      Long groupTeacherId = group.getTeacher() == null ? null : group.getTeacher().getId();
+      if (!teacherIdFilter.equals(groupTeacherId)) {
+        throw new AccessDeniedException("Group does not belong to current teacher");
+      }
+    }
     return lessonSessionRepository.findTop50ByArchivedFalseAndGroupIdOrderByStartsAtDesc(groupId).stream()
         .map(LessonSessionServiceImpl::toResponse)
         .toList();

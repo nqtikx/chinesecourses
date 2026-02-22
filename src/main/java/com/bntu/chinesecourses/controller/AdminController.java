@@ -29,6 +29,7 @@ public class AdminController {
         user.getId(),
         user.getUsername(),
         user.getRole().name(),
+        user.getTeacherId(),
         user.getCreatedAt()
     ));
   }

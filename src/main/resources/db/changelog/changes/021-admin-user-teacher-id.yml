@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 021-admin-user-teacher-id
+      author: chinesecourses
+      changes:
+        - addColumn:
+            tableName: admin_user
+            columns:
+              - column:
+                  name: teacher_id
+                  type: bigint
+        - addForeignKeyConstraint:
+            baseTableName: admin_user
+            baseColumnNames: teacher_id
+            referencedTableName: teacher
+            referencedColumnNames: id
+            constraintName: fk_admin_user_teacher

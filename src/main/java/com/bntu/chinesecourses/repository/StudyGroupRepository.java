@@ -11,6 +11,11 @@ public interface StudyGroupRepository extends JpaRepository<StudyGroupEntity, Lo
 
   List<StudyGroupEntity> findTop50ByArchivedFalseAndSemester_IdOrderByNameAsc(Long semesterId);
 
+  List<StudyGroupEntity> findTop50ByArchivedFalseAndSemester_IdAndTeacher_IdOrderByNameAsc(
+      Long semesterId, Long teacherId);
+
+  List<StudyGroupEntity> findByArchivedFalseAndTeacher_Id(Long teacherId);
+
   boolean existsByArchivedFalseAndSemester_IdAndNameIgnoreCase(Long semesterId, String name);
 
   boolean existsByArchivedFalseAndSemester_IdAndNameIgnoreCaseAndIdNot(
