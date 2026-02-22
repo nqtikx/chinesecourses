@@ -7,6 +7,7 @@ import com.bntu.chinesecourses.model.dto.SemesterUpdateRequest;
 import com.bntu.chinesecourses.service.SemesterService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,27 +30,32 @@ public class SemesterController {
   }
 
   @PostMapping
+  @PreAuthorize("hasRole('ADMIN')")
   @ResponseStatus(HttpStatus.CREATED)
   public SemesterResponse create(@RequestBody SemesterCreateRequest request) {
     return semesterService.create(request);
   }
 
   @GetMapping("/{id}")
+  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
   public SemesterResponse get(@PathVariable Long id) {
     return semesterService.get(id);
   }
 
   @GetMapping
+  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
   public List<SemesterResponse> listTop50ByCourse(@RequestParam Long courseId) {
     return semesterService.listTop50ByCourse(courseId);
   }
 
   @PutMapping("/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
   public SemesterResponse update(@PathVariable Long id, @RequestBody SemesterUpdateRequest request) {
     return semesterService.update(id, request);
   }
 
   @PatchMapping("/{id}/archive")
+  @PreAuthorize("hasRole('ADMIN')")
   public SemesterResponse setArchived(@PathVariable Long id, @RequestBody ArchiveRequest request) {
     return semesterService.setArchived(id, request.archived());
   }

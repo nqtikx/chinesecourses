@@ -15,4 +15,8 @@ public interface EnrollmentRepository extends JpaRepository<EnrollmentEntity, Lo
       EnrollmentStatus status,
       ChineseLevel level
   );
+
+  List<EnrollmentEntity> findTop50ByArchivedFalseAndGroupIdOrderByCreatedAtDesc(Long groupId);
+
+  boolean existsByArchivedFalseAndStudentIdAndGroupIdIn(Long studentId, java.util.List<Long> groupIds);
 }

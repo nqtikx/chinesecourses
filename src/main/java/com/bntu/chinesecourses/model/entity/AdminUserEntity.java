@@ -28,17 +28,21 @@ public class AdminUserEntity {
   @Column(name = "role", nullable = false, length = 64)
   private AdminRole role;
 
+  @Column(name = "teacher_id")
+  private Long teacherId;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
   protected AdminUserEntity() {
   }
 
-  public AdminUserEntity(Long id, String username, String passwordHash, AdminRole role, Instant createdAt) {
+  public AdminUserEntity(Long id, String username, String passwordHash, AdminRole role, Long teacherId, Instant createdAt) {
     this.id = id;
     this.username = username;
     this.passwordHash = passwordHash;
     this.role = role;
+    this.teacherId = teacherId;
     this.createdAt = createdAt;
   }
 
@@ -56,6 +60,10 @@ public class AdminUserEntity {
 
   public AdminRole getRole() {
     return role;
+  }
+
+  public Long getTeacherId() {
+    return teacherId;
   }
 
   public Instant getCreatedAt() {

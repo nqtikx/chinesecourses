@@ -6,9 +6,13 @@ import com.bntu.chinesecourses.model.dto.PersonCreateRequest;
 import com.bntu.chinesecourses.model.dto.PersonResponse;
 import com.bntu.chinesecourses.model.dto.PersonUpdateRequest;
 import com.bntu.chinesecourses.model.entity.PersonEntity;
+import com.bntu.chinesecourses.model.entity.StudyGroupEntity;
+import com.bntu.chinesecourses.repository.EnrollmentRepository;
 import com.bntu.chinesecourses.repository.PersonRepository;
+import com.bntu.chinesecourses.repository.StudyGroupRepository;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,9 +20,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class PersonService {
 
   private final PersonRepository personRepository;
+  private final StudyGroupRepository studyGroupRepository;
+  private final EnrollmentRepository enrollmentRepository;
 
-  public PersonService(PersonRepository personRepository) {
+  public PersonService(
+      PersonRepository personRepository,
+      StudyGroupRepository studyGroupRepository,
+      EnrollmentRepository enrollmentRepository
+  ) {
     this.personRepository = personRepository;
+    this.studyGroupRepository = studyGroupRepository;
+    this.enrollmentRepository = enrollmentRepository;
   }
 
   @Transactional
@@ -63,7 +75,8 @@ public class PersonService {
       throw new ConflictException("Email already exists");
     }
 
-    PersonEntity entity = personRepository.findById(id).orElseThrow();
+    PersonEntity entity = personRepository.findById(id)
+        .orElseThrow(() -> new NotFoundException("Person not found: id=" + id));
     entity.setLastName(request.lastName());
     entity.setFirstName(request.firstName());
     entity.setMiddleName(request.middleName());
@@ -75,9 +88,22 @@ public class PersonService {
   }
   @Transactional(readOnly = true)
   public PersonResponse get(Long id) {
-    return personRepository.findById(id)
-        .map(PersonService::toResponse)
-        .orElseThrow();
+    return get(id, null);
+  }
+
+  @Transactional(readOnly = true)
+  public PersonResponse get(Long id, Long teacherIdFilter) {
+    PersonEntity entity = personRepository.findById(id)
+        .orElseThrow(() -> new NotFoundException("Person not found: id=" + id));
+    if (teacherIdFilter != null) {
+      List<Long> teacherGroupIds = studyGroupRepository.findByArchivedFalseAndTeacher_Id(teacherIdFilter).stream()
+          .map(StudyGroupEntity::getId)
+          .toList();
+      if (teacherGroupIds.isEmpty() || !enrollmentRepository.existsByArchivedFalseAndStudentIdAndGroupIdIn(id, teacherGroupIds)) {
+        throw new AccessDeniedException("Person is not in current teacher's groups");
+      }
+    }
+    return toResponse(entity);
   }
 
   @Transactional(readOnly = true)
@@ -118,7 +144,8 @@ public class PersonService {
   }
   @Transactional
   public PersonResponse setArchived(Long id, boolean archived) {
-    PersonEntity entity = personRepository.findById(id).orElseThrow();
+    PersonEntity entity = personRepository.findById(id)
+        .orElseThrow(() -> new NotFoundException("Person not found: id=" + id));
     entity.setArchived(archived);
     return toResponse(entity);
   }

@@ -2,6 +2,7 @@ package com.bntu.chinesecourses.service.impl;
 
 import com.bntu.chinesecourses.exception.ConflictException;
 import com.bntu.chinesecourses.exception.NotFoundException;
+import org.springframework.security.access.AccessDeniedException;
 import com.bntu.chinesecourses.model.dto.StudyGroupCreateRequest;
 import com.bntu.chinesecourses.model.dto.StudyGroupResponse;
 import com.bntu.chinesecourses.model.dto.StudyGroupUpdateRequest;
@@ -69,8 +70,20 @@ public class StudyGroupServiceImpl implements StudyGroupService {
   @Override
   @Transactional(readOnly = true)
   public StudyGroupResponse get(Long id) {
+    return get(id, null);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public StudyGroupResponse get(Long id, Long teacherIdFilter) {
     StudyGroupEntity entity = studyGroupRepository.findByIdAndArchivedFalse(id)
         .orElseThrow(() -> new NotFoundException("Study group not found: id=" + id));
+    if (teacherIdFilter != null) {
+      Long groupTeacherId = entity.getTeacher() == null ? null : entity.getTeacher().getId();
+      if (!teacherIdFilter.equals(groupTeacherId)) {
+        throw new AccessDeniedException("Study group does not belong to current teacher");
+      }
+    }
     return toResponse(entity);
   }
 
@@ -107,9 +120,17 @@ public class StudyGroupServiceImpl implements StudyGroupService {
   @Override
   @Transactional(readOnly = true)
   public List<StudyGroupResponse> findTop50BySemester(Long semesterId) {
-    return studyGroupRepository.findTop50ByArchivedFalseAndSemester_IdOrderByNameAsc(semesterId).stream()
-        .map(StudyGroupServiceImpl::toResponse)
-        .toList();
+    return findTop50BySemester(semesterId, null);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<StudyGroupResponse> findTop50BySemester(Long semesterId, Long teacherIdFilter) {
+    List<StudyGroupEntity> list = teacherIdFilter == null
+        ? studyGroupRepository.findTop50ByArchivedFalseAndSemester_IdOrderByNameAsc(semesterId)
+        : studyGroupRepository.findTop50ByArchivedFalseAndSemester_IdAndTeacher_IdOrderByNameAsc(
+            semesterId, teacherIdFilter);
+    return list.stream().map(StudyGroupServiceImpl::toResponse).toList();
   }
 
   @Override

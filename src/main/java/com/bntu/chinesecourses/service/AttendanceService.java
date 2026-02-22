@@ -8,10 +8,22 @@ import java.util.List;
 public interface AttendanceService {
 
   AttendanceResponse create(AttendanceCreateRequest request);
+  /** When teacherIdFilter is non-null, lesson session's group must belong to that teacher. */
+  AttendanceResponse create(AttendanceCreateRequest request, Long teacherIdFilter);
 
   AttendanceResponse get(Long id);
+  /** When teacherIdFilter is non-null, attendance's lesson session must belong to that teacher. */
+  AttendanceResponse get(Long id, Long teacherIdFilter);
+
   AttendanceResponse update(Long id, AttendanceUpdateRequest request);
+  AttendanceResponse update(Long id, AttendanceUpdateRequest request, Long teacherIdFilter);
+
   List<AttendanceResponse> findTop50ByLessonSession(Long lessonSessionId);
+  List<AttendanceResponse> findTop50ByLessonSession(Long lessonSessionId, Long teacherIdFilter);
+
   List<AttendanceResponse> findTop50ByEnrollment(Long enrollmentId);
+  List<AttendanceResponse> findTop50ByEnrollment(Long enrollmentId, Long teacherIdFilter);
+
   AttendanceResponse setArchived(Long id, boolean archived);
+  AttendanceResponse setArchived(Long id, boolean archived, Long teacherIdFilter);
 }
