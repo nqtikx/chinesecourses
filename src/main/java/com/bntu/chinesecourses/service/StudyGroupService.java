@@ -10,7 +10,12 @@ public interface StudyGroupService {
   StudyGroupResponse create(StudyGroupCreateRequest request);
 
   StudyGroupResponse get(Long id);
+  /** When teacherIdFilter is non-null, returns 403 if group is not assigned to that teacher. */
+  StudyGroupResponse get(Long id, Long teacherIdFilter);
+
   StudyGroupResponse update(Long id, StudyGroupUpdateRequest request);
   List<StudyGroupResponse> findTop50BySemester(Long semesterId);
+  /** When teacherIdFilter is non-null, returns only groups assigned to that teacher. */
+  List<StudyGroupResponse> findTop50BySemester(Long semesterId, Long teacherIdFilter);
   StudyGroupResponse setArchived(Long id, boolean archived);
 }

@@ -8,6 +8,7 @@ import com.bntu.chinesecourses.service.GroupScheduleRuleService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,27 +31,32 @@ public class GroupScheduleRuleController {
   }
 
   @PostMapping
+  @PreAuthorize("hasRole('ADMIN')")
   @ResponseStatus(HttpStatus.CREATED)
   public GroupScheduleRuleResponse create(@Valid @RequestBody GroupScheduleRuleCreateRequest request) {
     return groupScheduleRuleService.create(request);
   }
 
   @GetMapping("/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
   public GroupScheduleRuleResponse get(@PathVariable Long id) {
     return groupScheduleRuleService.get(id);
   }
 
   @PutMapping("/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
   public GroupScheduleRuleResponse update(@PathVariable Long id, @Valid @RequestBody GroupScheduleRuleUpdateRequest request) {
     return groupScheduleRuleService.update(id, request);
   }
 
   @GetMapping
+  @PreAuthorize("hasRole('ADMIN')")
   public List<GroupScheduleRuleResponse> findTop50(@RequestParam Long groupId) {
     return groupScheduleRuleService.findTop50ByGroup(groupId);
   }
 
   @PatchMapping("/{id}/archive")
+  @PreAuthorize("hasRole('ADMIN')")
   public GroupScheduleRuleResponse setArchived(@PathVariable Long id, @RequestBody ArchiveRequest request) {
     return groupScheduleRuleService.setArchived(id, request.archived());
   }

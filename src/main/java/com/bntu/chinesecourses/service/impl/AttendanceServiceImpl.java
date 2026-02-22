@@ -9,12 +9,15 @@ import com.bntu.chinesecourses.model.dto.AttendanceUpdateRequest;
 import com.bntu.chinesecourses.model.entity.AttendanceEntity;
 import com.bntu.chinesecourses.model.entity.EnrollmentEntity;
 import com.bntu.chinesecourses.model.entity.LessonSessionEntity;
+import com.bntu.chinesecourses.model.entity.StudyGroupEntity;
 import com.bntu.chinesecourses.repository.AttendanceRepository;
 import com.bntu.chinesecourses.repository.EnrollmentRepository;
 import com.bntu.chinesecourses.repository.LessonSessionRepository;
+import com.bntu.chinesecourses.repository.StudyGroupRepository;
 import com.bntu.chinesecourses.service.AttendanceService;
 import java.time.Instant;
 import java.util.List;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,22 +27,35 @@ public class AttendanceServiceImpl implements AttendanceService {
   private final AttendanceRepository attendanceRepository;
   private final LessonSessionRepository lessonSessionRepository;
   private final EnrollmentRepository enrollmentRepository;
+  private final StudyGroupRepository studyGroupRepository;
 
   public AttendanceServiceImpl(
       AttendanceRepository attendanceRepository,
       LessonSessionRepository lessonSessionRepository,
-      EnrollmentRepository enrollmentRepository
+      EnrollmentRepository enrollmentRepository,
+      StudyGroupRepository studyGroupRepository
   ) {
     this.attendanceRepository = attendanceRepository;
     this.lessonSessionRepository = lessonSessionRepository;
     this.enrollmentRepository = enrollmentRepository;
+    this.studyGroupRepository = studyGroupRepository;
   }
 
   @Override
   @Transactional
   public AttendanceResponse create(AttendanceCreateRequest request) {
+    return create(request, null);
+  }
+
+  @Override
+  @Transactional
+  public AttendanceResponse create(AttendanceCreateRequest request, Long teacherIdFilter) {
     LessonSessionEntity lesson = lessonSessionRepository.findByIdAndArchivedFalse(request.lessonSessionId())
         .orElseThrow(() -> new NotFoundException("Lesson session not found: id=" + request.lessonSessionId()));
+
+    if (teacherIdFilter != null) {
+      ensureSessionBelongsToTeacher(lesson, teacherIdFilter);
+    }
 
     if (lesson.isCanceled()) {
       throw new ConflictException("Cannot mark attendance for canceled lesson: id=" + lesson.getId());
@@ -81,28 +97,55 @@ public class AttendanceServiceImpl implements AttendanceService {
   @Override
   @Transactional(readOnly = true)
   public AttendanceResponse get(Long id) {
+    return get(id, null);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public AttendanceResponse get(Long id, Long teacherIdFilter) {
     AttendanceEntity entity = attendanceRepository.findByIdAndArchivedFalse(id)
         .orElseThrow(() -> new NotFoundException("Attendance not found: id=" + id));
+    if (teacherIdFilter != null) {
+      ensureSessionBelongsToTeacher(entity.getLessonSession(), teacherIdFilter);
+    }
     return toResponse(entity);
   }
 
   @Override
   @Transactional
   public AttendanceResponse update(Long id, AttendanceUpdateRequest request) {
+    return update(id, request, null);
+  }
+
+  @Override
+  @Transactional
+  public AttendanceResponse update(Long id, AttendanceUpdateRequest request, Long teacherIdFilter) {
     AttendanceEntity entity = attendanceRepository.findById(id)
         .orElseThrow(() -> new NotFoundException("Attendance not found: id=" + id));
-
+    if (teacherIdFilter != null) {
+      ensureSessionBelongsToTeacher(entity.getLessonSession(), teacherIdFilter);
+    }
     entity.setStatus(request.status());
     entity.setComment(normalizeComment(request.comment()));
     entity.setMarkedAt(Instant.now());
     entity.setArchived(request.archived());
-
     return toResponse(entity);
   }
 
   @Override
   @Transactional(readOnly = true)
   public List<AttendanceResponse> findTop50ByLessonSession(Long lessonSessionId) {
+    return findTop50ByLessonSession(lessonSessionId, null);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<AttendanceResponse> findTop50ByLessonSession(Long lessonSessionId, Long teacherIdFilter) {
+    if (teacherIdFilter != null) {
+      LessonSessionEntity session = lessonSessionRepository.findByIdAndArchivedFalse(lessonSessionId)
+          .orElseThrow(() -> new NotFoundException("Lesson session not found: id=" + lessonSessionId));
+      ensureSessionBelongsToTeacher(session, teacherIdFilter);
+    }
     return attendanceRepository.findTop50ByArchivedFalseAndLessonSessionIdOrderByMarkedAtDesc(lessonSessionId).stream()
         .map(AttendanceServiceImpl::toResponse)
         .toList();
@@ -111,6 +154,25 @@ public class AttendanceServiceImpl implements AttendanceService {
   @Override
   @Transactional(readOnly = true)
   public List<AttendanceResponse> findTop50ByEnrollment(Long enrollmentId) {
+    return findTop50ByEnrollment(enrollmentId, null);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<AttendanceResponse> findTop50ByEnrollment(Long enrollmentId, Long teacherIdFilter) {
+    if (teacherIdFilter != null) {
+      EnrollmentEntity enrollment = enrollmentRepository.findById(enrollmentId)
+          .orElseThrow(() -> new NotFoundException("Enrollment not found: id=" + enrollmentId));
+      if (enrollment.getGroupId() == null) {
+        throw new AccessDeniedException("Enrollment has no group");
+      }
+      StudyGroupEntity group = studyGroupRepository.findByIdAndArchivedFalse(enrollment.getGroupId())
+          .orElseThrow(() -> new NotFoundException("Study group not found: id=" + enrollment.getGroupId()));
+      Long groupTeacherId = group.getTeacher() == null ? null : group.getTeacher().getId();
+      if (!teacherIdFilter.equals(groupTeacherId)) {
+        throw new AccessDeniedException("Enrollment does not belong to current teacher's groups");
+      }
+    }
     return attendanceRepository.findTop50ByArchivedFalseAndEnrollmentIdOrderByMarkedAtDesc(enrollmentId).stream()
         .map(AttendanceServiceImpl::toResponse)
         .toList();
@@ -119,11 +181,29 @@ public class AttendanceServiceImpl implements AttendanceService {
   @Override
   @Transactional
   public AttendanceResponse setArchived(Long id, boolean archived) {
+    return setArchived(id, archived, null);
+  }
+
+  @Override
+  @Transactional
+  public AttendanceResponse setArchived(Long id, boolean archived, Long teacherIdFilter) {
     AttendanceEntity entity = attendanceRepository.findById(id)
         .orElseThrow(() -> new NotFoundException("Attendance not found: id=" + id));
+    if (teacherIdFilter != null) {
+      ensureSessionBelongsToTeacher(entity.getLessonSession(), teacherIdFilter);
+    }
     entity.setArchived(archived);
     entity.setMarkedAt(Instant.now());
     return toResponse(entity);
+  }
+
+  private static void ensureSessionBelongsToTeacher(LessonSessionEntity session, Long teacherId) {
+    Long groupTeacherId = session.getGroup().getTeacher() == null
+        ? null
+        : session.getGroup().getTeacher().getId();
+    if (!teacherId.equals(groupTeacherId)) {
+      throw new AccessDeniedException("Lesson session does not belong to current teacher's groups");
+    }
   }
 
   private static String normalizeComment(String comment) {
