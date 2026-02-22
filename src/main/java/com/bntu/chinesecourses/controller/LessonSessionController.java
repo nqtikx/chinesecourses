@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/lesson-sessions")
+@RequestMapping("/api/lesson-sessions")
 public class LessonSessionController {
 
   private final LessonSessionService lessonSessionService;
