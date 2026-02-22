@@ -1,166 +1,257 @@
-import { useState, type FormEvent } from 'react';
-import { attendanceApi } from '../api';
-import type { AttendanceResponse, AttendanceStatus } from '../types';
+import { useEffect, useState } from 'react';
+import { attendanceApi, lessonSessionsApi, studyGroupsApi, semestersApi, coursesApi, enrollmentsApi, personsApi } from '../api';
+import type { AttendanceResponse, AttendanceStatus, LessonSessionResponse, StudyGroupResponse, SemesterResponse, CourseResponse, EnrollmentResponse } from '../types';
 import { useAuth } from '../context/AuthContext';
-import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
-import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { toast } from '../components/ui/Toast';
-import { Plus, Pencil, Archive, ArchiveRestore, CheckSquare, Search } from 'lucide-react';
+import { CheckSquare, UserCheck, Clock, Check, X, AlertTriangle, FileText } from 'lucide-react';
 
-const STATUS_LABELS: Record<AttendanceStatus, string> = { PRESENT: 'Присутствовал', ABSENT: 'Отсутствовал', LATE: 'Опоздал', EXCUSED: 'Уваж. причина' };
-const STATUS_COLORS: Record<AttendanceStatus, 'green' | 'red' | 'yellow' | 'blue'> = { PRESENT: 'green', ABSENT: 'red', LATE: 'yellow', EXCUSED: 'blue' };
+const STATUS_LABELS: Record<AttendanceStatus, string> = { PRESENT: 'Присутствует', ABSENT: 'Отсутствует', LATE: 'Опоздал', EXCUSED: 'Уваж. причина' };
+const STATUS_ICONS: Record<AttendanceStatus, typeof Check> = { PRESENT: Check, ABSENT: X, LATE: AlertTriangle, EXCUSED: FileText };
+const STATUS_STYLES: Record<AttendanceStatus, string> = {
+  PRESENT: 'bg-emerald-100 text-emerald-700 border-emerald-300 hover:bg-emerald-200',
+  ABSENT: 'bg-red-100 text-red-700 border-red-300 hover:bg-red-200',
+  LATE: 'bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200',
+  EXCUSED: 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200',
+};
 const STATUSES: AttendanceStatus[] = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'];
+
+interface StudentRow {
+  enrollment: EnrollmentResponse;
+  studentName: string;
+  attendance: AttendanceResponse | null;
+}
 
 export default function AttendancePage() {
   const { isAdmin, isTeacher } = useAuth();
   const canEdit = isAdmin || isTeacher;
-  const [sessionId, setSessionId] = useState('');
-  const [records, setRecords] = useState<AttendanceResponse[]>([]);
+
+  const [courses, setCourses] = useState<CourseResponse[]>([]);
+  const [semesters, setSemesters] = useState<SemesterResponse[]>([]);
+  const [groups, setGroups] = useState<StudyGroupResponse[]>([]);
+  const [sessions, setSessions] = useState<LessonSessionResponse[]>([]);
+
+  const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
+  const [selectedSemester, setSelectedSemester] = useState<number | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
+  const [selectedSession, setSelectedSession] = useState<number | null>(null);
+
+  const [students, setStudents] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<AttendanceResponse | null>(null);
-  const [form, setForm] = useState({ lessonSessionId: '', enrollmentId: '', status: 'PRESENT' as AttendanceStatus, comment: '' });
-  const [archiveTarget, setArchiveTarget] = useState<AttendanceResponse | null>(null);
+  const [saving, setSaving] = useState<number | null>(null);
 
-  const searchBySession = async () => {
-    if (!sessionId.trim()) return;
-    setLoading(true); setSearched(true);
-    try { const { data } = await attendanceApi.listBySession(Number(sessionId)); setRecords(data); } catch { toast('error', 'Ошибка загрузки'); } finally { setLoading(false); }
-  };
+  useEffect(() => { coursesApi.list().then(({ data }) => { setCourses(data); if (data.length) setSelectedCourse(data[0].id); }); }, []);
 
-  const reload = async () => { if (sessionId.trim()) { const { data } = await attendanceApi.listBySession(Number(sessionId)); setRecords(data); } };
+  useEffect(() => {
+    if (selectedCourse) {
+      semestersApi.listByCourse(selectedCourse).then(({ data }) => {
+        setSemesters(data);
+        setSelectedSemester(data.length ? data[0].id : null);
+      });
+    }
+  }, [selectedCourse]);
 
-  const openCreate = () => { setEditing(null); setForm({ lessonSessionId: sessionId, enrollmentId: '', status: 'PRESENT', comment: '' }); setModalOpen(true); };
+  useEffect(() => {
+    if (selectedSemester) {
+      studyGroupsApi.listBySemester(selectedSemester).then(({ data }) => {
+        setGroups(data);
+        setSelectedGroup(data.length ? data[0].id : null);
+      });
+    } else { setGroups([]); setSelectedGroup(null); }
+  }, [selectedSemester]);
 
-  const openEdit = (a: AttendanceResponse) => { setEditing(a); setForm({ lessonSessionId: a.lessonSessionId.toString(), enrollmentId: a.enrollmentId.toString(), status: a.status, comment: a.comment || '' }); setModalOpen(true); };
+  useEffect(() => {
+    if (selectedGroup) {
+      lessonSessionsApi.listByGroup(selectedGroup).then(({ data }) => {
+        const sorted = data.filter(s => !s.archived).sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
+        setSessions(sorted);
+        setSelectedSession(sorted.length ? sorted[0].id : null);
+      });
+    } else { setSessions([]); setSelectedSession(null); }
+  }, [selectedGroup]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (selectedSession && selectedGroup) {
+      loadAttendance();
+    } else { setStudents([]); }
+  }, [selectedSession]);
+
+  const loadAttendance = async () => {
+    if (!selectedSession || !selectedGroup) return;
+    setLoading(true);
     try {
-      if (editing) { await attendanceApi.update(editing.id, { status: form.status, comment: form.comment || undefined, archived: editing.archived }); toast('success', 'Запись обновлена'); }
-      else { await attendanceApi.create({ lessonSessionId: Number(form.lessonSessionId), enrollmentId: Number(form.enrollmentId), status: form.status, comment: form.comment || undefined }); toast('success', 'Посещение отмечено'); }
-      setModalOpen(false); reload();
-    } catch { toast('error', 'Ошибка сохранения'); }
+      const [enrollRes, attRes] = await Promise.all([
+        enrollmentsApi.listByGroup(selectedGroup),
+        attendanceApi.listBySession(selectedSession),
+      ]);
+      const activeEnrollments = enrollRes.data.filter(e => !e.archived && e.status === 'ACTIVE');
+      const rows: StudentRow[] = await Promise.all(activeEnrollments.map(async (e) => {
+        let studentName = `#${e.studentId}`;
+        try {
+          const { data: p } = await personsApi.get(e.studentId);
+          studentName = [p.lastName, p.firstName, p.middleName].filter(Boolean).join(' ');
+        } catch {}
+        const att = attRes.data.find(a => a.enrollmentId === e.id && !a.archived) || null;
+        return { enrollment: e, studentName, attendance: att };
+      }));
+      rows.sort((a, b) => a.studentName.localeCompare(b.studentName));
+      setStudents(rows);
+    } catch { toast('error', 'Ошибка загрузки'); }
+    setLoading(false);
   };
 
-  const confirmArchive = async () => {
-    if (!archiveTarget) return;
-    try { await attendanceApi.archive(archiveTarget.id, { archived: !archiveTarget.archived }); toast('success', archiveTarget.archived ? 'Восстановлено' : 'Архивировано'); reload(); } catch { toast('error', 'Ошибка'); }
-    setArchiveTarget(null);
+  const markAttendance = async (row: StudentRow, status: AttendanceStatus) => {
+    if (!selectedSession) return;
+    setSaving(row.enrollment.id);
+    try {
+      if (row.attendance) {
+        await attendanceApi.update(row.attendance.id, { status, archived: false });
+      } else {
+        await attendanceApi.create({ lessonSessionId: selectedSession, enrollmentId: row.enrollment.id, status });
+      }
+      await loadAttendance();
+      toast('success', `${row.studentName}: ${STATUS_LABELS[status]}`);
+    } catch { toast('error', 'Ошибка сохранения'); }
+    setSaving(null);
+  };
+
+  const fmtSession = (s: LessonSessionResponse) => {
+    const d = new Date(s.startsAt);
+    return `${d.toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })} ${d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })} — ${s.topic || 'Без темы'}`;
+  };
+
+  const stats = {
+    present: students.filter(s => s.attendance?.status === 'PRESENT').length,
+    absent: students.filter(s => s.attendance?.status === 'ABSENT').length,
+    late: students.filter(s => s.attendance?.status === 'LATE').length,
+    excused: students.filter(s => s.attendance?.status === 'EXCUSED').length,
+    unmarked: students.filter(s => !s.attendance).length,
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="bg-teal-500 text-white p-2.5 rounded-lg"><CheckSquare className="w-5 h-5" /></div>
+      <div className="flex items-center gap-3">
+        <div className="bg-teal-500 text-white p-2.5 rounded-lg"><CheckSquare className="w-5 h-5" /></div>
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Посещаемость</h1>
+          <p className="text-sm text-gray-500">{canEdit ? 'Отмечайте присутствие и пропуски студентов' : 'Просмотр посещаемости'}</p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Посещаемость</h1>
-            <p className="text-sm text-gray-500">{canEdit ? 'Учёт посещений слушателей' : 'Просмотр посещаемости'}</p>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Курс</label>
+            <select value={selectedCourse || ''} onChange={(e) => setSelectedCourse(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500">
+              {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Семестр</label>
+            <select value={selectedSemester || ''} onChange={(e) => setSelectedSemester(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500">
+              {semesters.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Группа</label>
+            <select value={selectedGroup || ''} onChange={(e) => setSelectedGroup(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500">
+              {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Занятие</label>
+            <select value={selectedSession || ''} onChange={(e) => setSelectedSession(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500">
+              {sessions.map((s) => <option key={s.id} value={s.id}>{fmtSession(s)}</option>)}
+            </select>
           </div>
         </div>
-        {canEdit && (
-          <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium transition-colors">
-            <Plus className="w-4 h-4" /> Отметить посещение
-          </button>
-        )}
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input value={sessionId} onChange={(e) => setSessionId(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && searchBySession()} placeholder="Введите ID занятия..." className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
-        </div>
-        <button onClick={searchBySession} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 transition-colors">Загрузить</button>
-      </div>
-
-      {canEdit && (
-        <div className={`${isTeacher && !isAdmin ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-amber-50 border-amber-200 text-amber-700'} border rounded-xl p-4 text-sm`}>
-          {isTeacher && !isAdmin
-            ? 'Как преподаватель, вы можете отмечать и редактировать посещаемость для занятий ваших групп.'
-            : 'Администратор может управлять всеми записями посещаемости.'}
+      {selectedSession && students.length > 0 && (
+        <div className="grid grid-cols-5 gap-3">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-emerald-600">{stats.present}</div>
+            <div className="text-xs text-emerald-700">Присутствуют</div>
+          </div>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-red-600">{stats.absent}</div>
+            <div className="text-xs text-red-700">Отсутствуют</div>
+          </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-amber-600">{stats.late}</div>
+            <div className="text-xs text-amber-700">Опоздали</div>
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-blue-600">{stats.excused}</div>
+            <div className="text-xs text-blue-700">Ув. причина</div>
+          </div>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+            <div className="text-2xl font-bold text-gray-600">{stats.unmarked}</div>
+            <div className="text-xs text-gray-600">Не отмечены</div>
+          </div>
         </div>
       )}
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent" /></div>
-        ) : records.length === 0 ? (
-          <EmptyState message={searched ? 'Записей посещаемости нет для этого занятия' : 'Введите ID занятия для просмотра посещаемости'} />
+        ) : !selectedSession ? (
+          <EmptyState message="Выберите занятие для просмотра посещаемости" />
+        ) : students.length === 0 ? (
+          <EmptyState message="Нет активных студентов в этой группе" />
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-medium text-gray-500">ID</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-500">ID зачисления</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-500">Статус</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-500">Комментарий</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-500">Время отметки</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-500">Архив</th>
-                {canEdit && <th className="text-right py-3 px-4 font-medium text-gray-500">Действия</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {records.map((a) => (
-                <tr key={a.id} className="hover:bg-gray-50">
-                  <td className="py-3 px-4 text-gray-400 font-mono text-xs">{a.id}</td>
-                  <td className="py-3 px-4 text-gray-700">{a.enrollmentId}</td>
-                  <td className="py-3 px-4"><Badge variant={STATUS_COLORS[a.status]}>{STATUS_LABELS[a.status]}</Badge></td>
-                  <td className="py-3 px-4 text-gray-600 max-w-xs truncate">{a.comment || '—'}</td>
-                  <td className="py-3 px-4 text-gray-500 text-xs">{new Date(a.markedAt).toLocaleString('ru')}</td>
-                  <td className="py-3 px-4"><Badge variant={a.archived ? 'gray' : 'green'}>{a.archived ? 'Да' : 'Нет'}</Badge></td>
-                  {canEdit && (
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openEdit(a)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"><Pencil className="w-4 h-4" /></button>
-                        <button onClick={() => setArchiveTarget(a)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
-                          {a.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
-                        </button>
+          <div className="divide-y divide-gray-100">
+            {students.map((row) => {
+              const isSaving = saving === row.enrollment.id;
+              const currentStatus = row.attendance?.status;
+              return (
+                <div key={row.enrollment.id} className={`flex items-center justify-between px-5 py-3 ${isSaving ? 'opacity-60' : ''}`}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                      currentStatus === 'PRESENT' ? 'bg-emerald-100 text-emerald-600' :
+                      currentStatus === 'ABSENT' ? 'bg-red-100 text-red-600' :
+                      currentStatus === 'LATE' ? 'bg-amber-100 text-amber-600' :
+                      currentStatus === 'EXCUSED' ? 'bg-blue-100 text-blue-600' :
+                      'bg-gray-100 text-gray-400'
+                    }`}>
+                      {row.studentName.split(' ').map(w => w[0]).join('').slice(0, 2)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-medium text-gray-900 text-sm truncate">{row.studentName}</div>
+                      <div className="text-xs text-gray-400">
+                        {currentStatus ? STATUS_LABELS[currentStatus] : 'Не отмечен'}
+                        {row.attendance?.comment && ` — ${row.attendance.comment}`}
                       </div>
-                    </td>
+                    </div>
+                  </div>
+                  {canEdit && (
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {STATUSES.map((s) => {
+                        const Icon = STATUS_ICONS[s];
+                        const isActive = currentStatus === s;
+                        return (
+                          <button
+                            key={s}
+                            onClick={() => markAttendance(row, s)}
+                            disabled={isSaving}
+                            className={`p-2 rounded-lg border text-xs font-medium transition-all ${
+                              isActive ? STATUS_STYLES[s] + ' ring-2 ring-offset-1 ring-current' : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-600'
+                            }`}
+                            title={STATUS_LABELS[s]}
+                          >
+                            <Icon className="w-4 h-4" />
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
-
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Редактировать посещение' : 'Отметить посещение'}>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!editing && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ID занятия *</label>
-                <input value={form.lessonSessionId} onChange={(e) => setForm({ ...form, lessonSessionId: e.target.value })} required className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ID зачисления (enrollment) *</label>
-                <input value={form.enrollmentId} onChange={(e) => setForm({ ...form, enrollmentId: e.target.value })} required className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
-              </div>
-            </>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Статус посещения *</label>
-            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as AttendanceStatus })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500">
-              {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Комментарий</label>
-            <input value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" placeholder="Необязательное примечание" />
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">Отмена</button>
-            <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium transition-colors">{editing ? 'Сохранить' : 'Отметить'}</button>
-          </div>
-        </form>
-      </Modal>
-
-      <ConfirmDialog open={!!archiveTarget} title={archiveTarget?.archived ? 'Восстановить?' : 'Архивировать?'} message={`Запись посещаемости #${archiveTarget?.id} будет ${archiveTarget?.archived ? 'восстановлена' : 'архивирована'}.`} confirmLabel={archiveTarget?.archived ? 'Восстановить' : 'Архивировать'} onConfirm={confirmArchive} onCancel={() => setArchiveTarget(null)} />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { toast } from '../components/ui/Toast';
-import { Plus, Pencil, Archive, ArchiveRestore, UserCheck, Search } from 'lucide-react';
+import { Plus, Pencil, Archive, ArchiveRestore, UserCheck, Search, Phone, Mail, Calendar, User } from 'lucide-react';
 
 export default function PersonsPage() {
   const [persons, setPersons] = useState<PersonResponse[]>([]);
@@ -17,6 +17,7 @@ export default function PersonsPage() {
   const [editing, setEditing] = useState<PersonResponse | null>(null);
   const [form, setForm] = useState({ lastName: '', firstName: '', middleName: '', birthDate: '', phone: '', email: '' });
   const [archiveTarget, setArchiveTarget] = useState<PersonResponse | null>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
   const search = async () => {
     if (!searchPrefix.trim()) return;
@@ -46,7 +47,7 @@ export default function PersonsPage() {
 
   const confirmArchive = async () => {
     if (!archiveTarget) return;
-    try { await personsApi.archive(archiveTarget.id, { archived: !archiveTarget.archived }); toast('success', archiveTarget.archived ? 'Восстановлен' : 'Архивирован'); if (searchPrefix.trim()) search(); } catch { toast('error', 'Ошибка'); }
+    try { await personsApi.archive(archiveTarget.id, { archived: !archiveTarget.archived }); toast('success', archiveTarget.archived ? 'Восстановлен(а)' : 'Архивирован(а)'); if (searchPrefix.trim()) search(); } catch { toast('error', 'Ошибка'); }
     setArchiveTarget(null);
   };
 
@@ -73,23 +74,72 @@ export default function PersonsPage() {
           <input value={searchPrefix} onChange={(e) => setSearchPrefix(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} placeholder="Поиск по фамилии..." className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
         </div>
         <button onClick={search} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 transition-colors">Найти</button>
+        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+          <button onClick={() => setViewMode('cards')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'cards' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>Карточки</button>
+          <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'table' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>Таблица</button>
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent" /></div>
-        ) : persons.length === 0 ? (
-          <EmptyState message={searched ? 'Ничего не найдено' : 'Введите фамилию для поиска абитуриентов и слушателей'} />
-        ) : (
+      {loading ? (
+        <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent" /></div>
+      ) : persons.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200"><EmptyState message={searched ? 'Ничего не найдено' : 'Введите фамилию для поиска абитуриентов и слушателей'} /></div>
+      ) : viewMode === 'cards' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {persons.map((p) => (
+            <div key={p.id} className={`bg-white rounded-xl border ${p.archived ? 'border-gray-200 opacity-60' : 'border-gray-200'} p-5 hover:shadow-md transition-shadow`}>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold ${p.archived ? 'bg-gray-100 text-gray-400' : 'bg-emerald-100 text-emerald-600'}`}>
+                    {p.lastName[0]}{p.firstName[0]}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-900">{p.lastName} {p.firstName}</div>
+                    {p.middleName && <div className="text-sm text-gray-500">{p.middleName}</div>}
+                  </div>
+                </div>
+                <Badge variant={p.archived ? 'gray' : 'green'}>{p.archived ? 'Архив' : 'Активен'}</Badge>
+              </div>
+              <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5">
+                {p.birthDate && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                    {new Date(p.birthDate + 'T00:00').toLocaleDateString('ru')}
+                  </div>
+                )}
+                {p.phone && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Phone className="w-3.5 h-3.5 text-gray-400" /> {p.phone}
+                  </div>
+                )}
+                {p.email && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Mail className="w-3.5 h-3.5 text-gray-400" /> {p.email}
+                  </div>
+                )}
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-xs text-gray-400">ID: {p.id}</span>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors"><Pencil className="w-4 h-4" /></button>
+                    <button onClick={() => setArchiveTarget(p)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
+                      {p.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="text-left py-3 px-4 font-medium text-gray-500">ID</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-500">Фамилия</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-500">Имя</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-500">Отчество</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-500">ФИО</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-500">Телефон</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-500">Email</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-500">Дата рожд.</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-500">Статус</th>
                 <th className="text-right py-3 px-4 font-medium text-gray-500">Действия</th>
               </tr>
@@ -98,12 +148,11 @@ export default function PersonsPage() {
               {persons.map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50">
                   <td className="py-3 px-4 text-gray-400 font-mono text-xs">{p.id}</td>
-                  <td className="py-3 px-4 font-medium text-gray-900">{p.lastName}</td>
-                  <td className="py-3 px-4 text-gray-700">{p.firstName}</td>
-                  <td className="py-3 px-4 text-gray-600">{p.middleName || '—'}</td>
+                  <td className="py-3 px-4 font-medium text-gray-900">{fullName(p)}</td>
                   <td className="py-3 px-4 text-gray-600">{p.phone || '—'}</td>
                   <td className="py-3 px-4 text-gray-600">{p.email || '—'}</td>
-                  <td className="py-3 px-4"><Badge variant={p.archived ? 'gray' : 'green'}>{p.archived ? 'В архиве' : 'Активен'}</Badge></td>
+                  <td className="py-3 px-4 text-gray-600 text-xs">{p.birthDate ? new Date(p.birthDate + 'T00:00').toLocaleDateString('ru') : '—'}</td>
+                  <td className="py-3 px-4"><Badge variant={p.archived ? 'gray' : 'green'}>{p.archived ? 'Архив' : 'Активен'}</Badge></td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"><Pencil className="w-4 h-4" /></button>
@@ -116,8 +165,8 @@ export default function PersonsPage() {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Редактировать данные' : 'Добавить персону'} wide>
         <form onSubmit={handleSubmit} className="space-y-4">

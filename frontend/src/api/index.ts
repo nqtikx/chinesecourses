@@ -45,6 +45,7 @@ export const studyGroupsApi = {
 
 export const personsApi = {
   search: (prefix: string) => client.get<PersonResponse[]>(`/api/persons?lastNamePrefix=${prefix}`),
+  searchByLastName: (prefix: string) => client.get<PersonResponse[]>(`/api/persons?lastNamePrefix=${prefix}`),
   get: (id: number) => client.get<PersonResponse>(`/api/persons/${id}`),
   create: (data: PersonCreateRequest) => client.post<PersonResponse>('/api/persons', data),
   update: (id: number, data: PersonUpdateRequest) => client.put<PersonResponse>(`/api/persons/${id}`, data),
@@ -52,6 +53,7 @@ export const personsApi = {
 };
 
 export const teachersApi = {
+  list: () => client.get<TeacherResponse[]>('/api/teachers'),
   get: (id: number) => client.get<TeacherResponse>(`/api/teachers/${id}`),
   create: (personId: number) => client.post<TeacherResponse>('/api/teachers', { personId }),
   archive: (id: number, req: ArchiveRequest) => client.patch(`/api/teachers/${id}/archive`, req),
