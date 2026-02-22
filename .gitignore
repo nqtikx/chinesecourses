@@ -32,6 +32,10 @@ build/
 ### VS Code ###
 .vscode/
 
+### Node ###
+node_modules/
+frontend/dist/
+
 .env
 /application-docker.yml
 application-docker.yml

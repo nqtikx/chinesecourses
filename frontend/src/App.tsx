@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import ToastContainer from './components/ui/Toast';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import CoursesPage from './pages/CoursesPage';
@@ -20,12 +21,20 @@ function AdminOnlyRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function LoginGuard() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) return <Navigate to="/" replace />;
+  return <LoginPage />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <ToastContainer />
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<LoginGuard />} />
           <Route
             element={
               <ProtectedRoute>

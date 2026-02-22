@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/group-schedule-rules")
+@RequestMapping("/api/group-schedule-rules")
 public class GroupScheduleRuleController {
 
   private final GroupScheduleRuleService groupScheduleRuleService;

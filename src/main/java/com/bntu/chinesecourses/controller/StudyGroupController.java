@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/study-groups")
+@RequestMapping("/api/study-groups")
 public class StudyGroupController {
 
   private final StudyGroupService studyGroupService;
