@@ -5,6 +5,7 @@ import com.bntu.chinesecourses.model.dto.TeacherCreateRequest;
 import com.bntu.chinesecourses.model.dto.TeacherResponse;
 import com.bntu.chinesecourses.service.TeacherService;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +25,12 @@ public class TeacherController {
 
   public TeacherController(TeacherService teacherService) {
     this.teacherService = teacherService;
+  }
+
+  @GetMapping
+  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+  public List<TeacherResponse> list() {
+    return teacherService.listAll();
   }
 
   @PostMapping
