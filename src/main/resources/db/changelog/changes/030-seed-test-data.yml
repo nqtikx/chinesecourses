@@ -1,0 +1,194 @@
+databaseChangeLog:
+  - changeSet:
+      id: 030-seed-persons
+      author: chinesecourses
+      changes:
+        - insert:
+            tableName: person
+            columns:
+              - column: { name: last_name, value: "Ли" }
+              - column: { name: first_name, value: "Мэйлинь" }
+              - column: { name: middle_name, value: "" }
+              - column: { name: birth_date, value: "1985-03-15" }
+              - column: { name: phone, value: "+375291001001" }
+              - column: { name: email, value: "li.meilin@example.com" }
+              - column: { name: archived, valueBoolean: false }
+              - column: { name: created_at, valueComputed: "now()" }
+        - insert:
+            tableName: person
+            columns:
+              - column: { name: last_name, value: "Иванов" }
+              - column: { name: first_name, value: "Пётр" }
+              - column: { name: middle_name, value: "Сергеевич" }
+              - column: { name: birth_date, value: "2001-07-22" }
+              - column: { name: phone, value: "+375291002002" }
+              - column: { name: email, value: "ivanov.p@example.com" }
+              - column: { name: archived, valueBoolean: false }
+              - column: { name: created_at, valueComputed: "now()" }
+        - insert:
+            tableName: person
+            columns:
+              - column: { name: last_name, value: "Козлова" }
+              - column: { name: first_name, value: "Анна" }
+              - column: { name: middle_name, value: "Игоревна" }
+              - column: { name: birth_date, value: "2002-01-10" }
+              - column: { name: phone, value: "+375291003003" }
+              - column: { name: email, value: "kozlova.a@example.com" }
+              - column: { name: archived, valueBoolean: false }
+              - column: { name: created_at, valueComputed: "now()" }
+        - insert:
+            tableName: person
+            columns:
+              - column: { name: last_name, value: "Сидоров" }
+              - column: { name: first_name, value: "Алексей" }
+              - column: { name: middle_name, value: "Витальевич" }
+              - column: { name: birth_date, value: "2000-11-05" }
+              - column: { name: phone, value: "+375291004004" }
+              - column: { name: email, value: "sidorov.a@example.com" }
+              - column: { name: archived, valueBoolean: false }
+              - column: { name: created_at, valueComputed: "now()" }
+        - insert:
+            tableName: person
+            columns:
+              - column: { name: last_name, value: "Петрова" }
+              - column: { name: first_name, value: "Мария" }
+              - column: { name: middle_name, value: "Дмитриевна" }
+              - column: { name: birth_date, value: "2003-05-18" }
+              - column: { name: phone, value: "+375291005005" }
+              - column: { name: email, value: "petrova.m@example.com" }
+              - column: { name: archived, valueBoolean: false }
+              - column: { name: created_at, valueComputed: "now()" }
+        - insert:
+            tableName: person
+            columns:
+              - column: { name: last_name, value: "Чжан" }
+              - column: { name: first_name, value: "Вэй" }
+              - column: { name: middle_name, value: "" }
+              - column: { name: birth_date, value: "1990-09-01" }
+              - column: { name: phone, value: "+375291006006" }
+              - column: { name: email, value: "zhang.wei@example.com" }
+              - column: { name: archived, valueBoolean: false }
+              - column: { name: created_at, valueComputed: "now()" }
+
+  - changeSet:
+      id: 030-seed-teachers
+      author: chinesecourses
+      changes:
+        - sql:
+            sql: "INSERT INTO teacher (id, archived, created_at) VALUES ((SELECT id FROM person WHERE email='li.meilin@example.com'), false, now())"
+        - sql:
+            sql: "INSERT INTO teacher (id, archived, created_at) VALUES ((SELECT id FROM person WHERE email='zhang.wei@example.com'), false, now())"
+
+  - changeSet:
+      id: 030-seed-teacher-admin-user
+      author: chinesecourses
+      changes:
+        - sql:
+            sql: >
+              INSERT INTO admin_user (username, password_hash, role, teacher_id, created_at)
+              VALUES ('teacher', '$2b$10$RMlSEXxFi3ACoUTMvgXl6uKGDgxuL41l6GI9QXLvwkmKMXyZDD6Ue', 'ROLE_TEACHER',
+              (SELECT id FROM person WHERE email='li.meilin@example.com'), now())
+
+  - changeSet:
+      id: 030-seed-courses
+      author: chinesecourses
+      changes:
+        - insert:
+            tableName: course
+            columns:
+              - column: { name: name, value: "Базовый курс HSK1" }
+              - column: { name: description, value: "Начальный курс китайского языка. Изучение основ фонетики, иероглифики и базовой грамматики." }
+              - column: { name: archived, valueBoolean: false }
+              - column: { name: created_at, valueComputed: "now()" }
+        - insert:
+            tableName: course
+            columns:
+              - column: { name: name, value: "Продвинутый курс HSK3" }
+              - column: { name: description, value: "Углублённое изучение китайского языка для уровня HSK3. Разговорная практика и чтение." }
+              - column: { name: archived, valueBoolean: false }
+              - column: { name: created_at, valueComputed: "now()" }
+
+  - changeSet:
+      id: 030-seed-semesters
+      author: chinesecourses
+      changes:
+        - sql:
+            sql: >
+              INSERT INTO semester (course_id, name, start_date, end_date, archived, created_at)
+              VALUES (
+                (SELECT id FROM course WHERE name='Базовый курс HSK1'),
+                'Весна 2026', '2026-02-01', '2026-06-30', false, now()
+              )
+        - sql:
+            sql: >
+              INSERT INTO semester (course_id, name, start_date, end_date, archived, created_at)
+              VALUES (
+                (SELECT id FROM course WHERE name='Продвинутый курс HSK3'),
+                'Весна 2026', '2026-02-01', '2026-06-30', false, now()
+              )
+
+  - changeSet:
+      id: 030-seed-study-groups
+      author: chinesecourses
+      changes:
+        - sql:
+            sql: >
+              INSERT INTO study_group (semester_id, teacher_id, name, archived, created_at)
+              VALUES (
+                (SELECT s.id FROM semester s JOIN course c ON c.id=s.course_id WHERE c.name='Базовый курс HSK1' AND s.name='Весна 2026'),
+                (SELECT id FROM person WHERE email='li.meilin@example.com'),
+                'Группа A-1', false, now()
+              )
+        - sql:
+            sql: >
+              INSERT INTO study_group (semester_id, teacher_id, name, archived, created_at)
+              VALUES (
+                (SELECT s.id FROM semester s JOIN course c ON c.id=s.course_id WHERE c.name='Базовый курс HSK1' AND s.name='Весна 2026'),
+                (SELECT id FROM person WHERE email='zhang.wei@example.com'),
+                'Группа A-2', false, now()
+              )
+
+  - changeSet:
+      id: 030-seed-enrollments
+      author: chinesecourses
+      changes:
+        - sql:
+            sql: >
+              INSERT INTO enrollment (student_id, payer_id, semester_id, group_id, status, level, archived, created_at)
+              VALUES (
+                (SELECT id FROM person WHERE email='ivanov.p@example.com'),
+                (SELECT id FROM person WHERE email='ivanov.p@example.com'),
+                (SELECT s.id FROM semester s JOIN course c ON c.id=s.course_id WHERE c.name='Базовый курс HSK1' AND s.name='Весна 2026'),
+                (SELECT sg.id FROM study_group sg WHERE sg.name='Группа A-1'),
+                'ACTIVE', 'HSK1', false, now()
+              )
+        - sql:
+            sql: >
+              INSERT INTO enrollment (student_id, payer_id, semester_id, group_id, status, level, archived, created_at)
+              VALUES (
+                (SELECT id FROM person WHERE email='kozlova.a@example.com'),
+                (SELECT id FROM person WHERE email='kozlova.a@example.com'),
+                (SELECT s.id FROM semester s JOIN course c ON c.id=s.course_id WHERE c.name='Базовый курс HSK1' AND s.name='Весна 2026'),
+                (SELECT sg.id FROM study_group sg WHERE sg.name='Группа A-1'),
+                'ACTIVE', 'HSK1', false, now()
+              )
+        - sql:
+            sql: >
+              INSERT INTO enrollment (student_id, payer_id, semester_id, group_id, status, level, archived, created_at)
+              VALUES (
+                (SELECT id FROM person WHERE email='sidorov.a@example.com'),
+                (SELECT id FROM person WHERE email='sidorov.a@example.com'),
+                (SELECT s.id FROM semester s JOIN course c ON c.id=s.course_id WHERE c.name='Базовый курс HSK1' AND s.name='Весна 2026'),
+                (SELECT sg.id FROM study_group sg WHERE sg.name='Группа A-2'),
+                'APPLICANT', 'HSK1', false, now()
+              )
+        - sql:
+            sql: >
+              INSERT INTO enrollment (student_id, payer_id, semester_id, group_id, status, level, archived, created_at)
+              VALUES (
+                (SELECT id FROM person WHERE email='petrova.m@example.com'),
+                (SELECT id FROM person WHERE email='petrova.m@example.com'),
+                (SELECT s.id FROM semester s JOIN course c ON c.id=s.course_id WHERE c.name='Базовый курс HSK1' AND s.name='Весна 2026'),
+                (SELECT sg.id FROM study_group sg WHERE sg.name='Группа A-1'),
+                'ACTIVE', 'HSK1', false, now()
+              )
