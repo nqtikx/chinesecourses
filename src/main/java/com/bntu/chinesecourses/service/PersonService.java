@@ -121,10 +121,6 @@ public class PersonService {
         .map(PersonService::toResponse)
         .toList();
 
-    if (result.isEmpty()) {
-      throw new NotFoundException("Persons not found by lastNamePrefix: " + prefix.trim());
-    }
-
     return result;
   }
 

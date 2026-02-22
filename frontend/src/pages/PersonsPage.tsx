@@ -138,7 +138,9 @@ export default function PersonsPage() {
         </form>
       </Modal>
 
-      <ConfirmDialog open={!!archiveTarget} title={archiveTarget?.archived ? 'Восстановить?' : 'Архивировать?'} message={`${fullName(archiveTarget!)} будет ${archiveTarget?.archived ? 'восстановлен(а)' : 'архивирован(а)'}. `} confirmLabel={archiveTarget?.archived ? 'Восстановить' : 'Архивировать'} onConfirm={confirmArchive} onCancel={() => setArchiveTarget(null)} />
+      {archiveTarget && (
+        <ConfirmDialog open title={archiveTarget.archived ? 'Восстановить?' : 'Архивировать?'} message={`${fullName(archiveTarget)} будет ${archiveTarget.archived ? 'восстановлен(а)' : 'архивирован(а)'}. `} confirmLabel={archiveTarget.archived ? 'Восстановить' : 'Архивировать'} onConfirm={confirmArchive} onCancel={() => setArchiveTarget(null)} />
+      )}
     </div>
   );
 }

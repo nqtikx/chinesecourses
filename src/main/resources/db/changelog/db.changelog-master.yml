@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/changes/020-create-schedule-attendance-tables.yml
   - include:
       file: db/changelog/changes/021-admin-user-teacher-id.yml
+  - include:
+      file: db/changelog/changes/030-seed-test-data.yml
