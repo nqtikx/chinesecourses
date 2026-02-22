@@ -13,3 +13,5 @@ databaseChangeLog:
       file: db/changelog/changes/021-admin-user-teacher-id.yml
   - include:
       file: db/changelog/changes/030-seed-test-data.yml
+  - include:
+      file: db/changelog/changes/040-seed-lessons-schedule-attendance.yml

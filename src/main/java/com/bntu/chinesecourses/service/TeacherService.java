@@ -7,6 +7,8 @@ import com.bntu.chinesecourses.model.entity.PersonEntity;
 import com.bntu.chinesecourses.model.entity.TeacherEntity;
 import com.bntu.chinesecourses.repository.PersonRepository;
 import com.bntu.chinesecourses.repository.TeacherRepository;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +40,13 @@ public class TeacherService {
     TeacherEntity saved = teacherRepository.save(teacher);
 
     return toResponse(saved);
+  }
+
+  @Transactional(readOnly = true)
+  public List<TeacherResponse> listAll() {
+    return teacherRepository.findAll().stream()
+        .map(this::toResponse)
+        .collect(Collectors.toList());
   }
 
   @Transactional(readOnly = true)
