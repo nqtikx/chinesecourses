@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/attendance")
+@RequestMapping("/api/attendance")
 public class AttendanceController {
 
   private final AttendanceService attendanceService;

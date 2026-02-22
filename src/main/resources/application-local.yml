@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5433/chinesecourses
+    username: postgres
+    password: Nikitikk1315
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yml
+
+security:
+  jwt:
+    secret: enAnEYwnfRQozzCD/XfyXpBQbHhPdUQQ+r0W6WgvcrQ=
+    issuer: chinesecourses
+    access-token-ttl: PT30M

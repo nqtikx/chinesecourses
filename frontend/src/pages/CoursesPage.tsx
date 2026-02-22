@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import { toast } from '../components/ui/Toast';
 import { Plus, Pencil, Archive, ArchiveRestore, BookOpen } from 'lucide-react';
 
 export default function CoursesPage() {
@@ -15,12 +17,15 @@ export default function CoursesPage() {
   const [editing, setEditing] = useState<CourseResponse | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [archiveTarget, setArchiveTarget] = useState<CourseResponse | null>(null);
 
   const load = async () => {
     setLoading(true);
     try {
       const { data } = await coursesApi.list();
       setCourses(data);
+    } catch {
+      toast('error', 'Не удалось загрузить курсы');
     } finally {
       setLoading(false);
     }
@@ -28,48 +33,47 @@ export default function CoursesPage() {
 
   useEffect(() => { load(); }, []);
 
-  const openCreate = () => {
-    setEditing(null);
-    setName('');
-    setDescription('');
-    setModalOpen(true);
-  };
+  const openCreate = () => { setEditing(null); setName(''); setDescription(''); setModalOpen(true); };
 
-  const openEdit = (c: CourseResponse) => {
-    setEditing(c);
-    setName(c.name);
-    setDescription(c.description || '');
-    setModalOpen(true);
-  };
+  const openEdit = (c: CourseResponse) => { setEditing(c); setName(c.name); setDescription(c.description || ''); setModalOpen(true); };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (editing) {
-      await coursesApi.update(editing.id, { name, description, archived: editing.archived });
-    } else {
-      await coursesApi.create({ name, description });
+    try {
+      if (editing) {
+        await coursesApi.update(editing.id, { name, description, archived: editing.archived });
+        toast('success', 'Курс обновлён');
+      } else {
+        await coursesApi.create({ name, description });
+        toast('success', 'Курс создан');
+      }
+      setModalOpen(false);
+      load();
+    } catch {
+      toast('error', 'Ошибка сохранения');
     }
-    setModalOpen(false);
-    load();
   };
 
-  const toggleArchive = async (c: CourseResponse) => {
-    await coursesApi.archive(c.id, { archived: !c.archived });
-    load();
+  const confirmArchive = async () => {
+    if (!archiveTarget) return;
+    try {
+      await coursesApi.archive(archiveTarget.id, { archived: !archiveTarget.archived });
+      toast('success', archiveTarget.archived ? 'Курс восстановлен' : 'Курс архивирован');
+      load();
+    } catch {
+      toast('error', 'Ошибка');
+    }
+    setArchiveTarget(null);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-500 text-white p-2.5 rounded-lg">
-            <BookOpen className="w-5 h-5" />
-          </div>
+          <div className="bg-blue-500 text-white p-2.5 rounded-lg"><BookOpen className="w-5 h-5" /></div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Курсы</h1>
-            <p className="text-sm text-gray-500">
-              {isAdmin ? 'Управление курсами китайского языка' : 'Просмотр курсов'}
-            </p>
+            <p className="text-sm text-gray-500">{isAdmin ? 'Управление программами обучения' : 'Просмотр программ обучения'}</p>
           </div>
         </div>
         {isAdmin && (
@@ -81,9 +85,7 @@ export default function CoursesPage() {
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent" />
-          </div>
+          <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent" /></div>
         ) : courses.length === 0 ? (
           <EmptyState message="Курсы не найдены" />
         ) : (
@@ -91,8 +93,9 @@ export default function CoursesPage() {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="text-left py-3 px-4 font-medium text-gray-500">ID</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-500">Название</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-500">Название курса</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-500">Описание</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-500">Создан</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-500">Статус</th>
                 {isAdmin && <th className="text-right py-3 px-4 font-medium text-gray-500">Действия</th>}
               </tr>
@@ -100,19 +103,18 @@ export default function CoursesPage() {
             <tbody className="divide-y divide-gray-100">
               {courses.map((c) => (
                 <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="py-3 px-4 text-gray-500 font-mono">{c.id}</td>
+                  <td className="py-3 px-4 text-gray-400 font-mono text-xs">{c.id}</td>
                   <td className="py-3 px-4 font-medium text-gray-900">{c.name}</td>
                   <td className="py-3 px-4 text-gray-600 max-w-xs truncate">{c.description || '—'}</td>
-                  <td className="py-3 px-4">
-                    <Badge variant={c.archived ? 'gray' : 'green'}>{c.archived ? 'Архив' : 'Активен'}</Badge>
-                  </td>
+                  <td className="py-3 px-4 text-gray-500 text-xs">{new Date(c.createdAt).toLocaleDateString('ru')}</td>
+                  <td className="py-3 px-4"><Badge variant={c.archived ? 'gray' : 'green'}>{c.archived ? 'В архиве' : 'Активен'}</Badge></td>
                   {isAdmin && (
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700" title="Редактировать">
+                        <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors" title="Редактировать">
                           <Pencil className="w-4 h-4" />
                         </button>
-                        <button onClick={() => toggleArchive(c)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700" title={c.archived ? 'Восстановить' : 'Архивировать'}>
+                        <button onClick={() => setArchiveTarget(c)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors" title={c.archived ? 'Восстановить' : 'Архивировать'}>
                           {c.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
                         </button>
                       </div>
@@ -128,19 +130,32 @@ export default function CoursesPage() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Редактировать курс' : 'Новый курс'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Название</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Название курса *</label>
+            <input value={name} onChange={(e) => setName(e.target.value)} required className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm" placeholder="Например: Базовый курс HSK1" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Описание</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm" />
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm" placeholder="Краткое описание программы курса" />
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Отмена</button>
-            <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium">Сохранить</button>
+            <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">Отмена</button>
+            <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium transition-colors">
+              {editing ? 'Сохранить' : 'Создать'}
+            </button>
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={!!archiveTarget}
+        title={archiveTarget?.archived ? 'Восстановить курс?' : 'Архивировать курс?'}
+        message={archiveTarget?.archived
+          ? `Курс «${archiveTarget?.name}» будет восстановлен из архива.`
+          : `Курс «${archiveTarget?.name}» будет перемещён в архив.`}
+        confirmLabel={archiveTarget?.archived ? 'Восстановить' : 'Архивировать'}
+        onConfirm={confirmArchive}
+        onCancel={() => setArchiveTarget(null)}
+      />
     </div>
   );
 }
