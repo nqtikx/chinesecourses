@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, BookOpen, Calendar, Users, GraduationCap,
   UserCheck, ClipboardList, Clock, CheckSquare, CalendarClock,
-  LogOut, Shield, ChevronLeft, ChevronRight,
+  LogOut, Shield, ChevronLeft, ChevronRight, FileText, UserCircle,
 } from 'lucide-react';
 import { useState } from 'react';
 import Badge from './ui/Badge';
@@ -22,7 +22,9 @@ const navItems: NavItem[] = [
   { to: '/semesters', label: 'Семестры', icon: <Calendar className="w-5 h-5" /> },
   { to: '/groups', label: 'Учебные группы', icon: <Users className="w-5 h-5" /> },
   { to: '/lessons', label: 'Занятия', icon: <Clock className="w-5 h-5" /> },
+  { to: '/profile', label: 'Профиль', icon: <UserCircle className="w-5 h-5" /> },
   { to: '/schedule', label: 'Расписание', icon: <CalendarClock className="w-5 h-5" />, adminOnly: true },
+  { to: '/contracts', label: 'Договоры PDF', icon: <FileText className="w-5 h-5" />, adminOnly: true },
   { to: '/persons', label: 'Абитуриенты и слушатели', icon: <UserCheck className="w-5 h-5" />, adminOnly: true, section: 'Контингент' },
   { to: '/teachers', label: 'Преподаватели', icon: <GraduationCap className="w-5 h-5" />, adminOnly: true },
   { to: '/enrollments', label: 'Зачисления', icon: <ClipboardList className="w-5 h-5" />, section: 'Учёт' },

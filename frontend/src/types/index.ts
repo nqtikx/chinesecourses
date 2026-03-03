@@ -67,7 +67,42 @@ export interface EnrollmentResponse {
   status: EnrollmentStatus;
   level: ChineseLevel;
   archived: boolean;
+  startDate: string | null;
+  endDate: string | null;
+  contractNumber: string | null;
   createdAt: string;
+}
+
+export interface ProfileCourseItemResponse {
+  enrollmentId: number;
+  courseId: number | null;
+  courseName: string | null;
+  groupId: number | null;
+  groupName: string | null;
+  groupTeacherName: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  status: string;
+}
+
+export interface UserProfileResponse {
+  userId: number;
+  username: string;
+  role: AdminRole;
+  personId: number | null;
+  fullName: string | null;
+  email: string | null;
+  phone: string | null;
+  currentCourse: ProfileCourseItemResponse | null;
+  completedCourses: ProfileCourseItemResponse[];
+}
+
+export interface AdminUserListItemResponse {
+  id: number;
+  username: string;
+  role: AdminRole;
+  personId: number | null;
+  fullName: string | null;
 }
 
 export interface LessonSessionResponse {
@@ -173,6 +208,7 @@ export interface EnrollmentCreateRequest {
   groupId?: number;
   status: EnrollmentStatus;
   level: ChineseLevel;
+  startDate?: string;
 }
 
 export interface EnrollmentUpdateRequest {
@@ -181,6 +217,8 @@ export interface EnrollmentUpdateRequest {
   groupId?: number;
   status: EnrollmentStatus;
   level: ChineseLevel;
+  startDate?: string;
+  endDate?: string;
   archived: boolean;
 }
 

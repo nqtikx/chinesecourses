@@ -19,4 +19,27 @@ public interface EnrollmentRepository extends JpaRepository<EnrollmentEntity, Lo
   List<EnrollmentEntity> findTop50ByArchivedFalseAndGroupIdOrderByCreatedAtDesc(Long groupId);
 
   boolean existsByArchivedFalseAndStudentIdAndGroupIdIn(Long studentId, java.util.List<Long> groupIds);
+
+  boolean existsByArchivedFalseAndStudentIdAndStatus(Long studentId, EnrollmentStatus status);
+
+  java.util.Optional<EnrollmentEntity> findFirstByArchivedFalseAndStudentIdAndStatusOrderByCreatedAtDesc(
+      Long studentId,
+      EnrollmentStatus status
+  );
+
+  List<EnrollmentEntity> findByArchivedFalseAndStudentIdAndStatusOrderByCreatedAtDesc(Long studentId, EnrollmentStatus status);
+
+  java.util.Optional<EnrollmentEntity> findFirstByArchivedFalseAndStudentIdAndGroupIdAndStatusOrderByCreatedAtDesc(
+      Long studentId,
+      Long groupId,
+      EnrollmentStatus status
+  );
+
+  java.util.Optional<EnrollmentEntity> findFirstByArchivedFalseAndStudentIdAndSemesterIdAndStatusOrderByCreatedAtDesc(
+      Long studentId,
+      Long semesterId,
+      EnrollmentStatus status
+  );
+
+  boolean existsByContractNumber(String contractNumber);
 }
