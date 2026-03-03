@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "enrollment")
@@ -41,6 +42,15 @@ public class EnrollmentEntity {
   @Column(name = "archived", nullable = false)
   private boolean archived;
 
+  @Column(name = "start_date")
+  private LocalDate startDate;
+
+  @Column(name = "end_date")
+  private LocalDate endDate;
+
+  @Column(name = "contract_number", length = 64)
+  private String contractNumber;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
@@ -56,6 +66,9 @@ public class EnrollmentEntity {
       EnrollmentStatus status,
       ChineseLevel level,
       boolean archived,
+      LocalDate startDate,
+      LocalDate endDate,
+      String contractNumber,
       Instant createdAt
   ) {
     this.id = id;
@@ -66,6 +79,9 @@ public class EnrollmentEntity {
     this.status = status;
     this.level = level;
     this.archived = archived;
+    this.startDate = startDate;
+    this.endDate = endDate;
+    this.contractNumber = contractNumber;
     this.createdAt = createdAt;
   }
 
@@ -101,6 +117,18 @@ public class EnrollmentEntity {
     return archived;
   }
 
+  public LocalDate getStartDate() {
+    return startDate;
+  }
+
+  public LocalDate getEndDate() {
+    return endDate;
+  }
+
+  public String getContractNumber() {
+    return contractNumber;
+  }
+
   public Instant getCreatedAt() {
     return createdAt;
   }
@@ -127,5 +155,17 @@ public class EnrollmentEntity {
 
   public void setArchived(boolean archived) {
     this.archived = archived;
+  }
+
+  public void setStartDate(LocalDate startDate) {
+    this.startDate = startDate;
+  }
+
+  public void setEndDate(LocalDate endDate) {
+    this.endDate = endDate;
+  }
+
+  public void setContractNumber(String contractNumber) {
+    this.contractNumber = contractNumber;
   }
 }
