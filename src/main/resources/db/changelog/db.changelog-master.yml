@@ -15,3 +15,5 @@ databaseChangeLog:
       file: db/changelog/changes/030-seed-test-data.yml
   - include:
       file: db/changelog/changes/040-seed-lessons-schedule-attendance.yml
+  - include:
+      file: db/changelog/changes/050-user-profile-contracts.yml

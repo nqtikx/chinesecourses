@@ -10,13 +10,17 @@ import type {
   LessonSessionResponse, LessonSessionCreateRequest, LessonSessionUpdateRequest,
   AttendanceResponse, AttendanceCreateRequest, AttendanceUpdateRequest,
   GroupScheduleRuleResponse, GroupScheduleRuleCreateRequest, GroupScheduleRuleUpdateRequest,
-  ArchiveRequest, EnrollmentStatus, ChineseLevel,
+  ArchiveRequest, EnrollmentStatus, ChineseLevel, UserProfileResponse, AdminUserListItemResponse,
 } from '../types';
 
 export const authApi = {
   login: (username: string, password: string) =>
     client.post<{ token: string }>('/api/auth/login', { username, password }),
   me: () => client.get<AdminMeResponse>('/api/admin/me'),
+};
+
+export const profileApi = {
+  me: () => client.get<UserProfileResponse>('/api/profile/me'),
 };
 
 export const coursesApi = {
@@ -96,4 +100,21 @@ export const scheduleRulesApi = {
   create: (data: GroupScheduleRuleCreateRequest) => client.post<GroupScheduleRuleResponse>('/api/group-schedule-rules', data),
   update: (id: number, data: GroupScheduleRuleUpdateRequest) => client.put<GroupScheduleRuleResponse>(`/api/group-schedule-rules/${id}`, data),
   archive: (id: number, req: ArchiveRequest) => client.patch(`/api/group-schedule-rules/${id}/archive`, req),
+};
+
+export const adminUsersApi = {
+  list: () => client.get<AdminUserListItemResponse[]>('/api/admin/users'),
+  profile: (id: number) => client.get<UserProfileResponse>(`/api/admin/users/${id}/profile`),
+};
+
+export const adminEnrollmentsApi = {
+  create: (data: { userId: number; courseId: number; groupId?: number; startDate?: string }) =>
+    client.post('/api/admin/enrollments', data),
+  complete: (id: number, data?: { status: 'COMPLETED'; endDate?: string }) =>
+    client.patch(`/api/admin/enrollments/${id}`, data ?? { status: 'COMPLETED' }),
+};
+
+export const contractsApi = {
+  generate: (data: { userId: number; courseId: number; groupId?: number }) =>
+    client.post('/api/admin/contracts', data, { responseType: 'blob' }),
 };
