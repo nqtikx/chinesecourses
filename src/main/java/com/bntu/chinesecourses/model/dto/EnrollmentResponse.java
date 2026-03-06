@@ -12,7 +12,6 @@ public record EnrollmentResponse(
     Long groupId,
     EnrollmentStatus status,
     ChineseLevel level,
-    boolean archived,
     Instant createdAt
 ) {
 }

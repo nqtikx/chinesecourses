@@ -1,18 +1,17 @@
 package com.bntu.chinesecourses.repository;
 
-import com.bntu.chinesecourses.model.entity.ChineseLevel;
 import com.bntu.chinesecourses.model.entity.EnrollmentEntity;
-import com.bntu.chinesecourses.model.entity.EnrollmentStatus;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface EnrollmentRepository extends JpaRepository<EnrollmentEntity, Long> {
 
-  boolean existsByArchivedFalseAndStudentIdAndSemesterId(Long studentId, Long semesterId);
+  Optional<EnrollmentEntity> findByIdAndArchivedFalse(Long id);
 
-  List<EnrollmentEntity> findTop50ByArchivedFalseAndSemesterIdAndStatusAndLevelOrderByCreatedAtDesc(
-      Long semesterId,
-      EnrollmentStatus status,
-      ChineseLevel level
-  );
+  List<EnrollmentEntity> findTop50ByArchivedFalseAndSemesterIdOrderByIdAsc(Long semesterId);
+
+  List<EnrollmentEntity> findTop200ByArchivedFalseAndGroupIdOrderByIdAsc(Long groupId);
+
+  boolean existsByArchivedFalseAndStudentIdAndSemesterId(Long studentId, Long semesterId);
 }

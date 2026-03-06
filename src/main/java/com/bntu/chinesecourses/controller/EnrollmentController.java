@@ -1,23 +1,19 @@
 package com.bntu.chinesecourses.controller;
 
-import com.bntu.chinesecourses.model.dto.ArchiveRequest;
-import com.bntu.chinesecourses.model.dto.EnrollmentCreateRequest;
 import com.bntu.chinesecourses.model.dto.EnrollmentResponse;
-import com.bntu.chinesecourses.model.dto.EnrollmentUpdateRequest;
-import com.bntu.chinesecourses.model.entity.ChineseLevel;
-import com.bntu.chinesecourses.model.entity.EnrollmentStatus;
+import com.bntu.chinesecourses.model.dto.EnrollmentUpsertRequest;
 import com.bntu.chinesecourses.service.EnrollmentService;
+import jakarta.validation.Valid;
 import java.util.List;
-import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -31,34 +27,41 @@ public class EnrollmentController {
   }
 
   @PostMapping
-  @ResponseStatus(HttpStatus.CREATED)
-  public EnrollmentResponse create(@RequestBody EnrollmentCreateRequest request) {
+  @PreAuthorize("hasRole('ADMIN')")
+  public EnrollmentResponse create(@RequestBody @Valid EnrollmentUpsertRequest request) {
     return enrollmentService.create(request);
   }
 
+  @PutMapping("/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
+  public EnrollmentResponse update(@PathVariable Long id, @RequestBody @Valid EnrollmentUpsertRequest request) {
+    return enrollmentService.update(id, request);
+  }
+
+  @DeleteMapping("/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
+  public void archive(@PathVariable Long id) {
+    enrollmentService.archive(id);
+  }
+
   @GetMapping("/{id}")
+  @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
   public EnrollmentResponse get(@PathVariable Long id) {
     return enrollmentService.get(id);
   }
 
-  @PutMapping("/{id}")
-  public EnrollmentResponse update(@PathVariable Long id, @RequestBody EnrollmentUpdateRequest request) {
-    return enrollmentService.update(id, request);
-  }
-
   @GetMapping
-  public List<EnrollmentResponse> findTop50(
-      @RequestParam Long semesterId,
-      @RequestParam EnrollmentStatus status,
-      @RequestParam ChineseLevel level
+  @PreAuthorize("hasRole('ADMIN') or hasRole('TEACHER')")
+  public List<EnrollmentResponse> list(
+      @RequestParam(value = "semesterId", required = false) Long semesterId,
+      @RequestParam(value = "groupId", required = false) Long groupId
   ) {
-    return enrollmentService.findTop50(semesterId, status, level);
+    if (semesterId != null) {
+      return enrollmentService.listBySemester(semesterId);
+    }
+    if (groupId != null) {
+      return enrollmentService.listByGroup(groupId);
+    }
+    throw new IllegalArgumentException("semesterId or groupId is required");
   }
-
-  @PatchMapping("/{id}/archive")
-  public EnrollmentResponse setArchived(@PathVariable Long id, @RequestBody ArchiveRequest request) {
-    return enrollmentService.setArchived(id, request.archived());
-  }
-
-
 }
