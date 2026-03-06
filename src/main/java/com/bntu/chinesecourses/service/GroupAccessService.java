@@ -5,6 +5,7 @@ import com.bntu.chinesecourses.model.entity.EnrollmentStatus;
 import com.bntu.chinesecourses.model.entity.StudyGroupEntity;
 import com.bntu.chinesecourses.repository.EnrollmentRepository;
 import com.bntu.chinesecourses.repository.StudyGroupRepository;
+import java.util.Objects;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +28,8 @@ public class GroupAccessService {
 
   @Transactional(readOnly = true)
   public StudyGroupEntity requireVisibleGroup(Long groupId) {
-    StudyGroupEntity group = studyGroupRepository.findById(groupId)
+    Long id = Objects.requireNonNull(groupId, "groupId is required");
+    StudyGroupEntity group = studyGroupRepository.findById(id)
         .orElseThrow(() -> new NotFoundException("Group not found id=" + groupId));
     if (currentUserService.isAdmin()) {
       return group;
@@ -41,10 +43,18 @@ public class GroupAccessService {
       }
       return group;
     }
+    if (currentUserService.isGroupAccount()) {
+      Long currentGroupId = currentUserService.getCurrentGroupId()
+          .orElseThrow(() -> new AccessDeniedException("Group account has no linked group"));
+      if (!id.equals(currentGroupId)) {
+        throw new AccessDeniedException("Group account can access only its own group");
+      }
+      return group;
+    }
     Long personId = currentUserService.getCurrentPersonId()
         .orElseThrow(() -> new AccessDeniedException("User has no linked person profile"));
     boolean inGroup = enrollmentRepository.existsByArchivedFalseAndStudentIdAndGroupIdAndStatus(
-        personId, groupId, EnrollmentStatus.ACTIVE);
+        personId, id, EnrollmentStatus.ACTIVE);
     if (!inGroup) {
       throw new AccessDeniedException("Group is not assigned to current student");
     }

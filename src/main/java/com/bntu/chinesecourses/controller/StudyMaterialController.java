@@ -19,7 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/materials")
-@PreAuthorize("hasAnyRole('ADMIN','TEACHER','USER')")
+@PreAuthorize("hasAnyRole('ADMIN','TEACHER','USER','GROUP')")
 public class StudyMaterialController {
 
   private final StudyMaterialService studyMaterialService;

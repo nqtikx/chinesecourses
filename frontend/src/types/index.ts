@@ -1,4 +1,4 @@
-export type AdminRole = 'ROLE_ADMIN' | 'ROLE_TEACHER' | 'ROLE_USER';
+export type AdminRole = 'ROLE_ADMIN' | 'ROLE_TEACHER' | 'ROLE_USER' | 'ROLE_GROUP';
 export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
 export type EnrollmentStatus = 'APPLICANT' | 'ACTIVE' | 'COMPLETED';
 export type ChineseLevel = 'HSK1' | 'HSK2' | 'HSK3' | 'HSK4' | 'HSK5' | 'HSK6';

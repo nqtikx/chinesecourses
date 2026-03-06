@@ -14,3 +14,5 @@ app:
   contracts:
     repeat-discount-percent: ${APP_CONTRACT_REPEAT_DISCOUNT_PERCENT:10}
     base-price: ${APP_CONTRACT_BASE_PRICE:1200}
+  group-account:
+    default-password: ${APP_GROUP_ACCOUNT_DEFAULT_PASSWORD:admin}

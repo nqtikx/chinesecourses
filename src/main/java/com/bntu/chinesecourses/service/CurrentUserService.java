@@ -38,6 +38,12 @@ public class CurrentUserService {
         .orElse(false);
   }
 
+  public boolean isGroupAccount() {
+    return getCurrentUser()
+        .map(u -> u.getRole() == AdminRole.ROLE_GROUP)
+        .orElse(false);
+  }
+
   /** Non-null only when current user is a teacher. */
   public Optional<Long> getCurrentTeacherId() {
     return getCurrentUser()
@@ -62,5 +68,12 @@ public class CurrentUserService {
       }
       return Optional.empty();
     });
+  }
+
+  public Optional<Long> getCurrentGroupId() {
+    return getCurrentUser()
+        .filter(u -> u.getRole() == AdminRole.ROLE_GROUP)
+        .map(AdminUserEntity::getGroupId)
+        .filter(id -> id != null);
   }
 }
