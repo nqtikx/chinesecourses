@@ -11,6 +11,8 @@ import type {
   AttendanceResponse, AttendanceCreateRequest, AttendanceUpdateRequest,
   GroupScheduleRuleResponse, GroupScheduleRuleCreateRequest, GroupScheduleRuleUpdateRequest,
   ArchiveRequest, EnrollmentStatus, ChineseLevel, UserProfileResponse, AdminUserListItemResponse,
+  ClassProfileResponse, StudyMaterialResponse, GroupScheduleTableResponse, ContractDocumentResponse,
+  ClassProfileGroupItemResponse, GroupNoteResponse,
 } from '../types';
 
 export const authApi = {
@@ -21,6 +23,14 @@ export const authApi = {
 
 export const profileApi = {
   me: () => client.get<UserProfileResponse>('/api/profile/me'),
+  updateMe: (data: {
+    firstName?: string;
+    lastName?: string;
+    middleName?: string;
+    birthDate?: string;
+    email?: string;
+    phone?: string;
+  }) => client.patch<UserProfileResponse>('/api/profile/me', data),
 };
 
 export const coursesApi = {
@@ -117,4 +127,35 @@ export const adminEnrollmentsApi = {
 export const contractsApi = {
   generate: (data: { userId: number; courseId: number; groupId?: number }) =>
     client.post('/api/admin/contracts', data, { responseType: 'blob' }),
+  my: () => client.get<ContractDocumentResponse[]>('/api/contracts/my'),
+  byGroup: (groupId: number) => client.get<ContractDocumentResponse[]>(`/api/contracts?groupId=${groupId}`),
+  all: () => client.get<ContractDocumentResponse[]>('/api/admin/contracts'),
+  download: (id: number) => client.get(`/api/contracts/${id}/download`, { responseType: 'blob' }),
+};
+
+export const classProfilesApi = {
+  me: () => client.get<ClassProfileResponse>('/api/class-profiles/me'),
+  byGroup: (groupId: number) => client.get<ClassProfileResponse>(`/api/class-profiles/${groupId}`),
+  groups: () => client.get<ClassProfileGroupItemResponse[]>('/api/class-profiles/groups'),
+  notes: (groupId: number) => client.get<GroupNoteResponse[]>(`/api/class-profiles/${groupId}/notes`),
+  addNote: (groupId: number, text: string) => client.post<GroupNoteResponse>(`/api/class-profiles/${groupId}/notes`, { text }),
+};
+
+export const materialsApi = {
+  list: (groupId: number) => client.get<StudyMaterialResponse[]>(`/api/materials?groupId=${groupId}`),
+  upload: (groupId: number, file: File) => {
+    const form = new FormData();
+    form.append('groupId', String(groupId));
+    form.append('file', file);
+    return client.post<StudyMaterialResponse>('/api/materials/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  download: (id: number) => client.get(`/api/materials/${id}/download`, { responseType: 'blob' }),
+  view: (id: number) => client.get(`/api/materials/${id}/view`, { responseType: 'blob' }),
+};
+
+export const scheduleTableApi = {
+  get: (groupId: number) => client.get<GroupScheduleTableResponse>(`/api/schedule-table/group/${groupId}`),
+  exportXlsx: (groupId: number) => client.get(`/api/schedule-table/group/${groupId}/export`, { responseType: 'blob' }),
 };

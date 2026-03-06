@@ -6,3 +6,11 @@ security:
     secret: ${JWT_SECRET}
     issuer: ${JWT_ISSUER:chinesecourses}
     access-token-ttl: ${JWT_ACCESS_TTL:PT30M}
+app:
+  storage:
+    base-dir: ${APP_STORAGE_BASE_DIR:data/storage}
+    materials-dir: ${APP_STORAGE_MATERIALS_DIR:materials}
+    contracts-dir: ${APP_STORAGE_CONTRACTS_DIR:contracts}
+  contracts:
+    repeat-discount-percent: ${APP_CONTRACT_REPEAT_DISCOUNT_PERCENT:10}
+    base-price: ${APP_CONTRACT_BASE_PRICE:1200}

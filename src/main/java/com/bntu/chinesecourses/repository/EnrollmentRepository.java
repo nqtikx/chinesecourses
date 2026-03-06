@@ -21,6 +21,7 @@ public interface EnrollmentRepository extends JpaRepository<EnrollmentEntity, Lo
   boolean existsByArchivedFalseAndStudentIdAndGroupIdIn(Long studentId, java.util.List<Long> groupIds);
 
   boolean existsByArchivedFalseAndStudentIdAndStatus(Long studentId, EnrollmentStatus status);
+  boolean existsByArchivedFalseAndStudentIdAndGroupIdAndStatus(Long studentId, Long groupId, EnrollmentStatus status);
 
   java.util.Optional<EnrollmentEntity> findFirstByArchivedFalseAndStudentIdAndStatusOrderByCreatedAtDesc(
       Long studentId,
@@ -28,6 +29,7 @@ public interface EnrollmentRepository extends JpaRepository<EnrollmentEntity, Lo
   );
 
   List<EnrollmentEntity> findByArchivedFalseAndStudentIdAndStatusOrderByCreatedAtDesc(Long studentId, EnrollmentStatus status);
+  List<EnrollmentEntity> findByArchivedFalseAndGroupIdAndStatusOrderByCreatedAtDesc(Long groupId, EnrollmentStatus status);
 
   java.util.Optional<EnrollmentEntity> findFirstByArchivedFalseAndStudentIdAndGroupIdAndStatusOrderByCreatedAtDesc(
       Long studentId,

@@ -16,6 +16,9 @@ import AttendancePage from './pages/AttendancePage';
 import ScheduleRulesPage from './pages/ScheduleRulesPage';
 import ProfilePage from './pages/ProfilePage';
 import ContractsPage from './pages/ContractsPage';
+import ClassProfilePage from './pages/ClassProfilePage';
+import ScheduleTablePage from './pages/ScheduleTablePage';
+import MaterialsPage from './pages/MaterialsPage';
 
 function AdminOnlyRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin } = useAuth();
@@ -49,9 +52,12 @@ export default function App() {
             <Route path="/semesters" element={<SemestersPage />} />
             <Route path="/groups" element={<StudyGroupsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/class-profile" element={<ClassProfilePage />} />
+            <Route path="/schedule-table" element={<ScheduleTablePage />} />
+            <Route path="/materials" element={<MaterialsPage />} />
             <Route path="/persons" element={<AdminOnlyRoute><PersonsPage /></AdminOnlyRoute>} />
             <Route path="/teachers" element={<AdminOnlyRoute><TeachersPage /></AdminOnlyRoute>} />
-            <Route path="/contracts" element={<AdminOnlyRoute><ContractsPage /></AdminOnlyRoute>} />
+            <Route path="/contracts" element={<ContractsPage />} />
             <Route path="/enrollments" element={<EnrollmentsPage />} />
             <Route path="/lessons" element={<LessonSessionsPage />} />
             <Route path="/attendance" element={<AttendancePage />} />

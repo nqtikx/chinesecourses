@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { adminEnrollmentsApi, adminUsersApi, coursesApi, profileApi, semestersApi, studyGroupsApi } from '../api';
-import type { AdminUserListItemResponse, CourseResponse, SemesterResponse, StudyGroupResponse, UserProfileResponse } from '../types';
+import { adminEnrollmentsApi, adminUsersApi, contractsApi, coursesApi, profileApi, semestersApi, studyGroupsApi } from '../api';
+import type { AdminUserListItemResponse, ContractDocumentResponse, CourseResponse, SemesterResponse, StudyGroupResponse, UserProfileResponse } from '../types';
 import { useAuth } from '../context/AuthContext';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
 import { toast } from '../components/ui/Toast';
-import { UserCircle, BookOpen, GraduationCap, History } from 'lucide-react';
+import { UserCircle, BookOpen, GraduationCap, History, Save, Download } from 'lucide-react';
 
 function Period({ from, to }: { from: string | null; to: string | null }) {
   if (!from && !to) return <span className="text-gray-400">—</span>;
@@ -28,12 +28,32 @@ export default function ProfilePage() {
   const [assignGroupId, setAssignGroupId] = useState<number | null>(null);
   const [assigning, setAssigning] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [contracts, setContracts] = useState<ContractDocumentResponse[]>([]);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [editForm, setEditForm] = useState({
+    firstName: '',
+    lastName: '',
+    middleName: '',
+    birthDate: '',
+    email: '',
+    phone: '',
+  });
 
   const loadMe = async () => {
     setLoading(true);
     try {
       const { data } = await profileApi.me();
       setProfile(data);
+      setEditForm({
+        firstName: data.fullName?.split(' ')[1] || '',
+        lastName: data.fullName?.split(' ')[0] || '',
+        middleName: data.fullName?.split(' ').slice(2).join(' ') || '',
+        birthDate: '',
+        email: data.email || '',
+        phone: data.phone || '',
+      });
+      const contractsRes = await contractsApi.my();
+      setContracts(contractsRes.data);
     } catch {
       toast('error', 'Не удалось загрузить профиль');
     } finally {
@@ -73,6 +93,21 @@ export default function ProfilePage() {
     try {
       const { data } = await adminUsersApi.profile(id);
       setProfile(data);
+      setEditForm({
+        firstName: data.fullName?.split(' ')[1] || '',
+        lastName: data.fullName?.split(' ')[0] || '',
+        middleName: data.fullName?.split(' ').slice(2).join(' ') || '',
+        birthDate: '',
+        email: data.email || '',
+        phone: data.phone || '',
+      });
+      if (isAdmin && data.currentCourse?.groupId) {
+        const contractsRes = await contractsApi.byGroup(data.currentCourse.groupId);
+        setContracts(contractsRes.data.filter(c => c.userId === data.userId));
+      } else {
+        const contractsRes = await contractsApi.my();
+        setContracts(contractsRes.data);
+      }
     } catch {
       toast('error', 'Не удалось загрузить профиль пользователя');
     } finally {
@@ -109,6 +144,49 @@ export default function ProfilePage() {
       toast('error', 'Не удалось завершить курс');
     } finally {
       setCompleting(false);
+    }
+  };
+
+  const saveMyProfile = async () => {
+    setSavingProfile(true);
+    try {
+      await profileApi.updateMe({
+        firstName: editForm.firstName,
+        lastName: editForm.lastName,
+        middleName: editForm.middleName,
+        email: editForm.email,
+        phone: editForm.phone,
+        birthDate: editForm.birthDate || undefined,
+      });
+      toast('success', 'Профиль обновлён');
+      if (profile) {
+        if (isAdmin && selectedUserId) {
+          await loadByUser(selectedUserId);
+        } else {
+          await loadMe();
+        }
+      }
+    } catch {
+      toast('error', 'Не удалось сохранить профиль');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const downloadContract = async (id: number, filename: string) => {
+    try {
+      const { data } = await contractsApi.download(id);
+      const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast('error', 'Ошибка скачивания договора');
     }
   };
 
@@ -162,6 +240,23 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700">Редактировать профиль</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input value={editForm.lastName} onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })} placeholder="Фамилия" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+              <input value={editForm.firstName} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })} placeholder="Имя" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+              <input value={editForm.middleName} onChange={(e) => setEditForm({ ...editForm, middleName: e.target.value })} placeholder="Отчество" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input type="date" value={editForm.birthDate} onChange={(e) => setEditForm({ ...editForm, birthDate: e.target.value })} className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+              <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+              <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Телефон" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+            </div>
+            <button onClick={saveMyProfile} disabled={savingProfile} className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium disabled:opacity-50">
+              <Save className="w-4 h-4" /> {savingProfile ? 'Сохранение...' : 'Сохранить'}
+            </button>
+          </div>
+
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-emerald-500" /> Текущий курс
@@ -203,6 +298,29 @@ export default function ProfilePage() {
                     <div className="text-xs text-gray-500 mt-1">
                       Период: <Period from={c.startDate} to={c.endDate} />
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Договоры</h3>
+            {contracts.length === 0 ? (
+              <p className="text-sm text-gray-400 italic">Договоры не найдены</p>
+            ) : (
+              <div className="space-y-2">
+                {contracts.map((c) => (
+                  <div key={c.id} className="rounded-lg border border-gray-200 px-4 py-3 flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{c.contractNumber}</div>
+                      <div className="text-xs text-gray-500">
+                        Стоимость: {c.basePrice} | Скидка: {c.discountPercent}% | Итого: {c.finalPrice}
+                      </div>
+                    </div>
+                    <button onClick={() => downloadContract(c.id, c.fileName)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50">
+                      <Download className="w-4 h-4" /> Скачать
+                    </button>
                   </div>
                 ))}
               </div>

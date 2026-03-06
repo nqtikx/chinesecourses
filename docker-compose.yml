@@ -38,6 +38,8 @@ services:
       JWT_SECRET: ${SECURITY_JWT_SECRET}
       JWT_ISSUER: ${SECURITY_JWT_ISSUER}
       JWT_ACCESS_TTL: ${SECURITY_JWT_ACCESS_TOKEN_TTL}
+    volumes:
+      - chinesecourses_storage:/app/storage
 
   frontend:
     build:
@@ -52,3 +54,4 @@ services:
 
 volumes:
   chinesecourses_pgdata:
+  chinesecourses_storage:

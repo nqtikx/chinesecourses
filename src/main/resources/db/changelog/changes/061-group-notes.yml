@@ -1,0 +1,64 @@
+databaseChangeLog:
+  - changeSet:
+      id: 061-create-group-note
+      author: chinesecourses
+      changes:
+        - createTable:
+            tableName: group_note
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: group_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: author_user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: text
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: "now()"
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: group_note
+            baseColumnNames: group_id
+            referencedTableName: study_group
+            referencedColumnNames: id
+            constraintName: fk_group_note_group
+            onDelete: cascade
+        - addForeignKeyConstraint:
+            baseTableName: group_note
+            baseColumnNames: author_user_id
+            referencedTableName: admin_user
+            referencedColumnNames: id
+            constraintName: fk_group_note_author
+            onDelete: restrict
+        - createIndex:
+            tableName: group_note
+            indexName: ix_group_note_group_created
+            columns:
+              - column:
+                  name: group_id
+              - column:
+                  name: created_at
