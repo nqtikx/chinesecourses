@@ -5,16 +5,22 @@ import com.bntu.chinesecourses.exception.NotFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import com.bntu.chinesecourses.model.dto.StudyGroupCreateRequest;
 import com.bntu.chinesecourses.model.dto.StudyGroupResponse;
+import com.bntu.chinesecourses.model.entity.AdminRole;
+import com.bntu.chinesecourses.model.entity.AdminUserEntity;
 import com.bntu.chinesecourses.model.dto.StudyGroupUpdateRequest;
 import com.bntu.chinesecourses.model.entity.SemesterEntity;
 import com.bntu.chinesecourses.model.entity.StudyGroupEntity;
 import com.bntu.chinesecourses.model.entity.TeacherEntity;
+import com.bntu.chinesecourses.repository.AdminUserRepository;
 import com.bntu.chinesecourses.repository.SemesterRepository;
 import com.bntu.chinesecourses.repository.StudyGroupRepository;
 import com.bntu.chinesecourses.repository.TeacherRepository;
 import com.bntu.chinesecourses.service.StudyGroupService;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,22 +30,32 @@ public class StudyGroupServiceImpl implements StudyGroupService {
   private final StudyGroupRepository studyGroupRepository;
   private final SemesterRepository semesterRepository;
   private final TeacherRepository teacherRepository;
+  private final AdminUserRepository adminUserRepository;
+  private final PasswordEncoder passwordEncoder;
+  private final String groupDefaultPassword;
 
   public StudyGroupServiceImpl(
       StudyGroupRepository studyGroupRepository,
       SemesterRepository semesterRepository,
-      TeacherRepository teacherRepository
+      TeacherRepository teacherRepository,
+      AdminUserRepository adminUserRepository,
+      PasswordEncoder passwordEncoder,
+      @Value("${app.group-account.default-password:admin}") String groupDefaultPassword
   ) {
     this.studyGroupRepository = studyGroupRepository;
     this.semesterRepository = semesterRepository;
     this.teacherRepository = teacherRepository;
+    this.adminUserRepository = adminUserRepository;
+    this.passwordEncoder = passwordEncoder;
+    this.groupDefaultPassword = groupDefaultPassword;
   }
 
   @Override
   @Transactional
   public StudyGroupResponse create(StudyGroupCreateRequest request) {
-    SemesterEntity semester = semesterRepository.findById(request.semesterId())
-        .orElseThrow(() -> new NotFoundException("Semester not found: id=" + request.semesterId()));
+    Long semesterId = Objects.requireNonNull(request.semesterId(), "semesterId is required");
+    SemesterEntity semester = semesterRepository.findById(semesterId)
+        .orElseThrow(() -> new NotFoundException("Semester not found: id=" + semesterId));
 
     if (semester.isArchived()) {
       throw new ConflictException("Cannot create group for archived semester: id=" + semester.getId());
@@ -64,6 +80,7 @@ public class StudyGroupServiceImpl implements StudyGroupService {
     );
 
     StudyGroupEntity saved = studyGroupRepository.save(entity);
+    ensureGroupSharedAccount(saved);
     return toResponse(saved);
   }
 
@@ -90,11 +107,13 @@ public class StudyGroupServiceImpl implements StudyGroupService {
   @Override
   @Transactional
   public StudyGroupResponse update(Long id, StudyGroupUpdateRequest request) {
-    StudyGroupEntity entity = studyGroupRepository.findById(id)
+    Long groupId = Objects.requireNonNull(id, "group id is required");
+    StudyGroupEntity entity = studyGroupRepository.findById(groupId)
         .orElseThrow(() -> new NotFoundException("Study group not found: id=" + id));
 
-    SemesterEntity semester = semesterRepository.findById(request.semesterId())
-        .orElseThrow(() -> new NotFoundException("Semester not found: id=" + request.semesterId()));
+    Long semesterId = Objects.requireNonNull(request.semesterId(), "semesterId is required");
+    SemesterEntity semester = semesterRepository.findById(semesterId)
+        .orElseThrow(() -> new NotFoundException("Semester not found: id=" + semesterId));
 
     if (semester.isArchived()) {
       throw new ConflictException("Cannot assign group to archived semester: id=" + semester.getId());
@@ -136,7 +155,8 @@ public class StudyGroupServiceImpl implements StudyGroupService {
   @Override
   @Transactional
   public StudyGroupResponse setArchived(Long id, boolean archived) {
-    StudyGroupEntity entity = studyGroupRepository.findById(id)
+    Long groupId = Objects.requireNonNull(id, "group id is required");
+    StudyGroupEntity entity = studyGroupRepository.findById(groupId)
         .orElseThrow(() -> new NotFoundException("Study group not found: id=" + id));
     entity.setArchived(archived);
     return toResponse(entity);
@@ -173,5 +193,25 @@ public class StudyGroupServiceImpl implements StudyGroupService {
     }
     String trimmed = notes.trim();
     return trimmed.isEmpty() ? null : trimmed;
+  }
+
+  private void ensureGroupSharedAccount(StudyGroupEntity group) {
+    Long groupId = group.getId();
+    if (groupId == null) {
+      return;
+    }
+    if (adminUserRepository.existsByGroupIdAndRole(groupId, AdminRole.ROLE_GROUP)) {
+      return;
+    }
+    adminUserRepository.save(new AdminUserEntity(
+        null,
+        "group_" + groupId,
+        passwordEncoder.encode(groupDefaultPassword),
+        AdminRole.ROLE_GROUP,
+        null,
+        null,
+        groupId,
+        Instant.now()
+    ));
   }
 }

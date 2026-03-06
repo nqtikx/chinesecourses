@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/class-profiles")
-@PreAuthorize("hasAnyRole('ADMIN','TEACHER','USER')")
+@PreAuthorize("hasAnyRole('ADMIN','TEACHER','USER','GROUP')")
 public class ClassProfileController {
 
   private final ClassProfileService classProfileService;

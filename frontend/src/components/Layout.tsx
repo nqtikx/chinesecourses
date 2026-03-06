@@ -127,7 +127,7 @@ export default function Layout() {
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-gray-400" />
               <Badge variant={isAdmin ? 'red' : isTeacher ? 'blue' : 'gray'}>
-                {isAdmin ? 'Администратор' : isTeacher ? 'Преподаватель' : 'Пользователь'}
+                {isAdmin ? 'Администратор' : isTeacher ? 'Преподаватель' : user?.role === 'ROLE_GROUP' ? 'Группа' : 'Пользователь'}
               </Badge>
             </div>
             <div className="w-px h-5 bg-gray-200" />

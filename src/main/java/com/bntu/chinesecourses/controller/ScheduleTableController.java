@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/schedule-table")
-@PreAuthorize("hasAnyRole('ADMIN','TEACHER','USER')")
+@PreAuthorize("hasAnyRole('ADMIN','TEACHER','USER','GROUP')")
 public class ScheduleTableController {
 
   private final ScheduleTableService scheduleTableService;

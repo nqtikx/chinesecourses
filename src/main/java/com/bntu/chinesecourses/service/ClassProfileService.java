@@ -62,6 +62,11 @@ public class ClassProfileService {
 
   @Transactional(readOnly = true)
   public ClassProfileResponse getMyClassProfile() {
+    if (currentUserService.isGroupAccount()) {
+      Long groupId = currentUserService.getCurrentGroupId()
+          .orElseThrow(() -> new NotFoundException("Current group account has no linked group"));
+      return getByGroupId(groupId);
+    }
     Long personId = currentUserService.getCurrentPersonId()
         .orElseThrow(() -> new NotFoundException("Current user has no person profile"));
     EnrollmentEntity enrollment = enrollmentRepository.findFirstByArchivedFalseAndStudentIdAndStatusOrderByCreatedAtDesc(
@@ -134,6 +139,11 @@ public class ClassProfileService {
     } else if (currentUserService.isTeacher()) {
       Long teacherId = currentUserService.getCurrentTeacherId().orElseThrow();
       groups = studyGroupRepository.findByArchivedFalseAndTeacher_IdOrderByNameAsc(teacherId);
+    } else if (currentUserService.isGroupAccount()) {
+      Long groupId = currentUserService.getCurrentGroupId().orElseThrow();
+      groups = studyGroupRepository.findByIdAndArchivedFalse(groupId)
+          .map(List::of)
+          .orElse(List.of());
     } else {
       Long personId = currentUserService.getCurrentPersonId().orElseThrow();
       List<Long> groupIds = enrollmentRepository.findByArchivedFalseAndStudentIdAndStatusOrderByCreatedAtDesc(

@@ -34,6 +34,9 @@ public class AdminUserEntity {
   @Column(name = "person_id")
   private Long personId;
 
+  @Column(name = "group_id")
+  private Long groupId;
+
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
@@ -49,12 +52,26 @@ public class AdminUserEntity {
       Long personId,
       Instant createdAt
   ) {
+    this(id, username, passwordHash, role, teacherId, personId, null, createdAt);
+  }
+
+  public AdminUserEntity(
+      Long id,
+      String username,
+      String passwordHash,
+      AdminRole role,
+      Long teacherId,
+      Long personId,
+      Long groupId,
+      Instant createdAt
+  ) {
     this.id = id;
     this.username = username;
     this.passwordHash = passwordHash;
     this.role = role;
     this.teacherId = teacherId;
     this.personId = personId;
+    this.groupId = groupId;
     this.createdAt = createdAt;
   }
 
@@ -80,6 +97,10 @@ public class AdminUserEntity {
 
   public Long getPersonId() {
     return personId;
+  }
+
+  public Long getGroupId() {
+    return groupId;
   }
 
   public Instant getCreatedAt() {
