@@ -33,6 +33,14 @@ function LoginGuard() {
   return <LoginPage />;
 }
 
+function HomeRoute() {
+  const { user } = useAuth();
+  if (user?.role === 'ROLE_GROUP') {
+    return <Navigate to="/class-profile" replace />;
+  }
+  return <DashboardPage />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -47,7 +55,7 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route path="/" element={<DashboardPage />} />
+            <Route path="/" element={<HomeRoute />} />
             <Route path="/courses" element={<CoursesPage />} />
             <Route path="/semesters" element={<SemestersPage />} />
             <Route path="/groups" element={<StudyGroupsPage />} />

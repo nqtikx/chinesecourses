@@ -43,9 +43,17 @@ public class EnrollmentController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'GROUP')")
   public EnrollmentResponse get(@PathVariable Long id) {
-    return enrollmentService.get(id, currentUserService.getCurrentTeacherId().orElse(null));
+    EnrollmentResponse response = enrollmentService.get(id, currentUserService.getCurrentTeacherId().orElse(null));
+    if (currentUserService.isGroupAccount()) {
+      Long currentGroupId = currentUserService.getCurrentGroupId()
+          .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Group id is not linked"));
+      if (response.groupId() == null || !currentGroupId.equals(response.groupId())) {
+        throw new org.springframework.security.access.AccessDeniedException("Access only to own group enrollments");
+      }
+    }
+    return response;
   }
 
   @PutMapping("/{id}")
@@ -55,7 +63,7 @@ public class EnrollmentController {
   }
 
   @GetMapping
-  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'GROUP')")
   public List<EnrollmentResponse> findTop50(
       @RequestParam(required = false) Long semesterId,
       @RequestParam(required = false) EnrollmentStatus status,
@@ -63,6 +71,13 @@ public class EnrollmentController {
       @RequestParam(required = false) Long groupId
   ) {
     if (groupId != null) {
+      if (currentUserService.isGroupAccount()) {
+        Long currentGroupId = currentUserService.getCurrentGroupId()
+            .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Group id is not linked"));
+        if (!currentGroupId.equals(groupId)) {
+          throw new org.springframework.security.access.AccessDeniedException("Access only to own group enrollments");
+        }
+      }
       if (semesterId != null || status != null || level != null) {
         throw new BadRequestException("Use either groupId or semesterId+status+level, not both");
       }
