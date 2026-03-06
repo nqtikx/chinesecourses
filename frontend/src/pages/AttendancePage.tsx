@@ -96,17 +96,29 @@ export default function AttendancePage() {
     if (!selectedSession || !selectedGroup) return;
     setLoading(true);
     try {
+      let groupStudentsMap = new Map<number, string>();
+      try {
+        const { data: classProfile } = await classProfilesApi.byGroup(selectedGroup);
+        groupStudentsMap = new Map(
+          classProfile.students.map((s) => [s.id, [s.lastName, s.firstName, s.middleName].filter(Boolean).join(' ')])
+        );
+      } catch {
+        groupStudentsMap = new Map();
+      }
+
       const [enrollRes, attRes] = await Promise.all([
         enrollmentsApi.listByGroup(selectedGroup),
         attendanceApi.listBySession(selectedSession),
       ]);
       const activeEnrollments = enrollRes.data.filter(e => !e.archived && e.status === 'ACTIVE');
       const rows: StudentRow[] = await Promise.all(activeEnrollments.map(async (e) => {
-        let studentName = `#${e.studentId}`;
-        try {
-          const { data: p } = await personsApi.get(e.studentId);
-          studentName = [p.lastName, p.firstName, p.middleName].filter(Boolean).join(' ');
-        } catch {}
+        let studentName = groupStudentsMap.get(e.studentId) || 'Неизвестный слушатель';
+        if (!groupStudentsMap.has(e.studentId) && !isGroup) {
+          try {
+            const { data: p } = await personsApi.get(e.studentId);
+            studentName = [p.lastName, p.firstName, p.middleName].filter(Boolean).join(' ');
+          } catch {}
+        }
         const att = attRes.data.find(a => a.enrollmentId === e.id && !a.archived) || null;
         return { enrollment: e, studentName, attendance: att };
       }));
