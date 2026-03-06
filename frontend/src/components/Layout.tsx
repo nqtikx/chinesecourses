@@ -13,6 +13,7 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   adminOnly?: boolean;
+  roles?: Array<'admin' | 'teacher' | 'user'>;
   section?: string;
 }
 
@@ -23,8 +24,11 @@ const navItems: NavItem[] = [
   { to: '/groups', label: 'Учебные группы', icon: <Users className="w-5 h-5" /> },
   { to: '/lessons', label: 'Занятия', icon: <Clock className="w-5 h-5" /> },
   { to: '/profile', label: 'Профиль', icon: <UserCircle className="w-5 h-5" /> },
+  { to: '/class-profile', label: 'Профиль класса', icon: <Users className="w-5 h-5" />, roles: ['admin', 'teacher', 'user'] },
+  { to: '/schedule-table', label: 'Таблица расписания', icon: <CalendarClock className="w-5 h-5" />, roles: ['admin', 'teacher', 'user'] },
+  { to: '/materials', label: 'Материалы', icon: <BookOpen className="w-5 h-5" />, roles: ['admin', 'teacher', 'user'] },
   { to: '/schedule', label: 'Расписание', icon: <CalendarClock className="w-5 h-5" />, adminOnly: true },
-  { to: '/contracts', label: 'Договоры PDF', icon: <FileText className="w-5 h-5" />, adminOnly: true },
+  { to: '/contracts', label: 'Договоры', icon: <FileText className="w-5 h-5" />, roles: ['admin', 'teacher', 'user'] },
   { to: '/persons', label: 'Абитуриенты и слушатели', icon: <UserCheck className="w-5 h-5" />, adminOnly: true, section: 'Контингент' },
   { to: '/teachers', label: 'Преподаватели', icon: <GraduationCap className="w-5 h-5" />, adminOnly: true },
   { to: '/enrollments', label: 'Зачисления', icon: <ClipboardList className="w-5 h-5" />, section: 'Учёт' },
@@ -41,7 +45,14 @@ export default function Layout() {
     navigate('/login');
   };
 
-  const visibleItems = navItems.filter((item) => !item.adminOnly || isAdmin);
+  const visibleItems = navItems.filter((item) => {
+    if (item.adminOnly && !isAdmin) return false;
+    if (!item.roles || item.roles.length === 0) return true;
+    if (isAdmin && item.roles.includes('admin')) return true;
+    if (isTeacher && item.roles.includes('teacher')) return true;
+    if (!isAdmin && !isTeacher && item.roles.includes('user')) return true;
+    return false;
+  });
 
   let lastSection = '';
 

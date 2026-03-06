@@ -3,6 +3,7 @@ package com.bntu.chinesecourses.service;
 import com.bntu.chinesecourses.exception.NotFoundException;
 import com.bntu.chinesecourses.model.dto.AdminUserListItemResponse;
 import com.bntu.chinesecourses.model.dto.ProfileCourseItemResponse;
+import com.bntu.chinesecourses.model.dto.ProfileUpdateRequest;
 import com.bntu.chinesecourses.model.dto.UserProfileResponse;
 import com.bntu.chinesecourses.model.entity.AdminUserEntity;
 import com.bntu.chinesecourses.model.entity.CourseEntity;
@@ -53,6 +54,39 @@ public class UserProfileService {
   public UserProfileResponse getMyProfile(String username) {
     AdminUserEntity user = adminUserService.findByUsername(username)
         .orElseThrow(() -> new NotFoundException("User not found"));
+    return buildProfile(user);
+  }
+
+  @Transactional
+  public UserProfileResponse updateMyProfile(String username, ProfileUpdateRequest request) {
+    AdminUserEntity user = adminUserService.findByUsername(username)
+        .orElseThrow(() -> new NotFoundException("User not found"));
+    Long personId = resolvePersonId(user);
+    if (personId == null) {
+      throw new NotFoundException("Current user has no linked person profile");
+    }
+    PersonEntity person = personRepository.findById(personId)
+        .orElseThrow(() -> new NotFoundException("Person not found id=" + personId));
+    if (request.firstName() != null && !request.firstName().isBlank()) {
+      person.setFirstName(request.firstName().trim());
+    }
+    if (request.lastName() != null && !request.lastName().isBlank()) {
+      person.setLastName(request.lastName().trim());
+    }
+    if (request.middleName() != null) {
+      person.setMiddleName(request.middleName().trim().isEmpty() ? null : request.middleName().trim());
+    }
+    if (request.birthDate() != null) {
+      person.setBirthDate(request.birthDate());
+    }
+    if (request.email() != null) {
+      String email = request.email().trim().isEmpty() ? null : request.email().trim().toLowerCase();
+      person.setEmail(email);
+    }
+    if (request.phone() != null) {
+      String phone = request.phone().trim().isEmpty() ? null : request.phone().trim();
+      person.setPhone(phone);
+    }
     return buildProfile(user);
   }
 

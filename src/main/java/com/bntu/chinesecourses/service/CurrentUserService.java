@@ -2,6 +2,7 @@ package com.bntu.chinesecourses.service;
 
 import com.bntu.chinesecourses.model.entity.AdminRole;
 import com.bntu.chinesecourses.model.entity.AdminUserEntity;
+import com.bntu.chinesecourses.repository.TeacherRepository;
 import java.util.Optional;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -11,9 +12,11 @@ import org.springframework.stereotype.Service;
 public class CurrentUserService {
 
   private final AdminUserService adminUserService;
+  private final TeacherRepository teacherRepository;
 
-  public CurrentUserService(AdminUserService adminUserService) {
+  public CurrentUserService(AdminUserService adminUserService, TeacherRepository teacherRepository) {
     this.adminUserService = adminUserService;
+    this.teacherRepository = teacherRepository;
   }
 
   public Optional<AdminUserEntity> getCurrentUser() {
@@ -41,5 +44,23 @@ public class CurrentUserService {
         .filter(u -> u.getRole() == AdminRole.ROLE_TEACHER)
         .map(AdminUserEntity::getTeacherId)
         .filter(id -> id != null);
+  }
+
+  public Optional<Long> getCurrentUserId() {
+    return getCurrentUser().map(AdminUserEntity::getId);
+  }
+
+  public Optional<Long> getCurrentPersonId() {
+    return getCurrentUser().flatMap(u -> {
+      if (u.getPersonId() != null) {
+        return Optional.of(u.getPersonId());
+      }
+      if (u.getTeacherId() != null) {
+        return teacherRepository.findById(u.getTeacherId())
+            .map(t -> t.getPerson() == null ? null : t.getPerson().getId())
+            .filter(id -> id != null);
+      }
+      return Optional.empty();
+    });
   }
 }
