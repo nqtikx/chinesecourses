@@ -1,25 +1,5 @@
 package com.bntu.chinesecourses.service;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
-
-import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import com.bntu.chinesecourses.exception.NotFoundException;
 import com.bntu.chinesecourses.model.dto.AdminContractCreateRequest;
 import com.bntu.chinesecourses.model.dto.ContractDocumentResponse;
@@ -36,6 +16,24 @@ import com.bntu.chinesecourses.repository.EnrollmentRepository;
 import com.bntu.chinesecourses.repository.PersonRepository;
 import com.bntu.chinesecourses.repository.SemesterRepository;
 import com.bntu.chinesecourses.repository.StudyGroupRepository;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import org.apache.poi.xwpf.usermodel.ParagraphAlignment;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ContractPdfService {
@@ -304,15 +302,11 @@ public class ContractPdfService {
           false);
       addSpacer(document, 1);
 
-      addLeft(document,
-          "________________________________________________________________________________________________________,",
-          11);
+      addLeft(document, "________________________________________________________________________________________________________,", 11);
       addCentered(document, "(ФИО гражданина(ки))", 10);
       addSpacer(document, 1);
 
-      addLeft(document,
-          "________________________________________________________________________________________________________",
-          11);
+      addLeft(document, "________________________________________________________________________________________________________", 11);
       addCentered(document, "(ФИО гражданина(ки) на белорусском языке)", 10);
       addSpacer(document, 1);
 
@@ -335,8 +329,7 @@ public class ContractPdfService {
       addJustified(document, "2.\tСеместр: " + safe(semesterName) + ".", 11, false);
       addJustified(document, "Группа: " + safe(groupName) + ".", 11, false);
       addJustified(document, "Преподаватель: " + safe(teacherName) + ".", 11, false);
-      addJustified(document, "Стоимость обучения на момент заключения настоящего договора составляет " + priceText, 11,
-          false);
+      addJustified(document, "Стоимость обучения на момент заключения настоящего договора составляет " + priceText, 11, false);
 
       if (discountPercent > 0) {
         addJustified(
@@ -423,8 +416,7 @@ public class ContractPdfService {
       addLeft(document, "             М.П. (подпись)", 11);
       addSpacer(document, 1);
 
-      addLeft(document,
-          "ФИО: " + safe(buildFullName(person.getLastName(), person.getFirstName(), person.getMiddleName())), 11);
+      addLeft(document, "ФИО: " + safe(buildFullName(person.getLastName(), person.getFirstName(), person.getMiddleName())), 11);
 
       document.write(out);
       return out.toByteArray();
