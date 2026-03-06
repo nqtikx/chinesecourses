@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { attendanceApi, lessonSessionsApi, studyGroupsApi, semestersApi, coursesApi, enrollmentsApi, personsApi } from '../api';
+import { attendanceApi, classProfilesApi, lessonSessionsApi, studyGroupsApi, semestersApi, coursesApi, enrollmentsApi, personsApi } from '../api';
 import type { AttendanceResponse, AttendanceStatus, LessonSessionResponse, StudyGroupResponse, SemesterResponse, CourseResponse, EnrollmentResponse } from '../types';
 import { useAuth } from '../context/AuthContext';
 import Badge from '../components/ui/Badge';
@@ -24,7 +24,7 @@ interface StudentRow {
 }
 
 export default function AttendancePage() {
-  const { isAdmin, isTeacher } = useAuth();
+  const { isAdmin, isTeacher, isGroup } = useAuth();
   const canEdit = isAdmin || isTeacher;
 
   const [courses, setCourses] = useState<CourseResponse[]>([]);
@@ -41,25 +41,40 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState<number | null>(null);
 
-  useEffect(() => { coursesApi.list().then(({ data }) => { setCourses(data); if (data.length) setSelectedCourse(data[0].id); }); }, []);
+  useEffect(() => {
+    if (isGroup) {
+      classProfilesApi.me().then(({ data }) => {
+        setCourses([{ id: data.courseId, name: data.courseName, description: null, archived: false, createdAt: new Date().toISOString() }]);
+        setSemesters([{ id: data.semesterId, courseId: data.courseId, name: data.semesterName, startDate: new Date().toISOString().slice(0, 10), endDate: new Date().toISOString().slice(0, 10), archived: false, createdAt: new Date().toISOString() }]);
+        setGroups([{ id: data.groupId, semesterId: data.semesterId, teacherId: data.teacherId, name: data.groupName, scheduleNotes: null, archived: false, createdAt: new Date().toISOString() }]);
+        setSelectedCourse(data.courseId);
+        setSelectedSemester(data.semesterId);
+        setSelectedGroup(data.groupId);
+      }).catch(() => {});
+      return;
+    }
+    coursesApi.list().then(({ data }) => { setCourses(data); if (data.length) setSelectedCourse(data[0].id); });
+  }, [isGroup]);
 
   useEffect(() => {
+    if (isGroup) return;
     if (selectedCourse) {
       semestersApi.listByCourse(selectedCourse).then(({ data }) => {
         setSemesters(data);
         setSelectedSemester(data.length ? data[0].id : null);
       });
     }
-  }, [selectedCourse]);
+  }, [selectedCourse, isGroup]);
 
   useEffect(() => {
+    if (isGroup) return;
     if (selectedSemester) {
       studyGroupsApi.listBySemester(selectedSemester).then(({ data }) => {
         setGroups(data);
         setSelectedGroup(data.length ? data[0].id : null);
       });
     } else { setGroups([]); setSelectedGroup(null); }
-  }, [selectedSemester]);
+  }, [selectedSemester, isGroup]);
 
   useEffect(() => {
     if (selectedGroup) {
@@ -143,19 +158,19 @@ export default function AttendancePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Курс</label>
-            <select value={selectedCourse || ''} onChange={(e) => setSelectedCourse(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500">
+            <select disabled={isGroup} value={selectedCourse || ''} onChange={(e) => setSelectedCourse(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50">
               {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Семестр</label>
-            <select value={selectedSemester || ''} onChange={(e) => setSelectedSemester(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500">
+            <select disabled={isGroup} value={selectedSemester || ''} onChange={(e) => setSelectedSemester(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50">
               {semesters.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Группа</label>
-            <select value={selectedGroup || ''} onChange={(e) => setSelectedGroup(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500">
+            <select disabled={isGroup} value={selectedGroup || ''} onChange={(e) => setSelectedGroup(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-50">
               {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
           </div>

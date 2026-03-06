@@ -36,6 +36,9 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-6">Вход в систему</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            Вход выполняется по логину и паролю для всех ролей: админ, преподаватель, слушатель и группа.
+          </p>
 
           {error && (
             <div className="flex items-center gap-2 p-3 mb-4 rounded-lg bg-red-50 text-red-700 text-sm">
