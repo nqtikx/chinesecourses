@@ -6,6 +6,8 @@ import com.bntu.chinesecourses.model.dto.AttendanceResponse;
 import com.bntu.chinesecourses.model.dto.AttendanceUpdateRequest;
 import com.bntu.chinesecourses.service.AttendanceService;
 import com.bntu.chinesecourses.service.CurrentUserService;
+import com.bntu.chinesecourses.service.EnrollmentService;
+import com.bntu.chinesecourses.service.LessonSessionService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -27,10 +29,19 @@ public class AttendanceController {
 
   private final AttendanceService attendanceService;
   private final CurrentUserService currentUserService;
+  private final LessonSessionService lessonSessionService;
+  private final EnrollmentService enrollmentService;
 
-  public AttendanceController(AttendanceService attendanceService, CurrentUserService currentUserService) {
+  public AttendanceController(
+      AttendanceService attendanceService,
+      CurrentUserService currentUserService,
+      LessonSessionService lessonSessionService,
+      EnrollmentService enrollmentService
+  ) {
     this.attendanceService = attendanceService;
     this.currentUserService = currentUserService;
+    this.lessonSessionService = lessonSessionService;
+    this.enrollmentService = enrollmentService;
   }
 
   @PostMapping
@@ -41,9 +52,13 @@ public class AttendanceController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'GROUP')")
   public AttendanceResponse get(@PathVariable Long id) {
-    return attendanceService.get(id, currentUserService.getCurrentTeacherId().orElse(null));
+    AttendanceResponse response = attendanceService.get(id, currentUserService.getCurrentTeacherId().orElse(null));
+    if (currentUserService.isGroupAccount()) {
+      ensureGroupEnrollmentAccess(response.enrollmentId());
+    }
+    return response;
   }
 
   @PutMapping("/{id}")
@@ -53,7 +68,7 @@ public class AttendanceController {
   }
 
   @GetMapping
-  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'GROUP')")
   public List<AttendanceResponse> findTop50(
       @RequestParam(required = false) Long lessonSessionId,
       @RequestParam(required = false) Long enrollmentId
@@ -63,12 +78,36 @@ public class AttendanceController {
     }
     var teacherId = currentUserService.getCurrentTeacherId().orElse(null);
     if (lessonSessionId != null) {
+      if (currentUserService.isGroupAccount()) {
+        ensureGroupSessionAccess(lessonSessionId);
+      }
       return attendanceService.findTop50ByLessonSession(lessonSessionId, teacherId);
     }
     if (enrollmentId != null) {
+      if (currentUserService.isGroupAccount()) {
+        ensureGroupEnrollmentAccess(enrollmentId);
+      }
       return attendanceService.findTop50ByEnrollment(enrollmentId, teacherId);
     }
     throw new com.bntu.chinesecourses.exception.BadRequestException("Specify filter: lessonSessionId or enrollmentId");
+  }
+
+  private void ensureGroupSessionAccess(Long lessonSessionId) {
+    Long currentGroupId = currentUserService.getCurrentGroupId()
+        .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Group id is not linked"));
+    Long sessionGroupId = lessonSessionService.get(lessonSessionId, null).groupId();
+    if (!currentGroupId.equals(sessionGroupId)) {
+      throw new org.springframework.security.access.AccessDeniedException("Access only to own group attendance");
+    }
+  }
+
+  private void ensureGroupEnrollmentAccess(Long enrollmentId) {
+    Long currentGroupId = currentUserService.getCurrentGroupId()
+        .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Group id is not linked"));
+    Long enrollmentGroupId = enrollmentService.get(enrollmentId, null).groupId();
+    if (enrollmentGroupId == null || !currentGroupId.equals(enrollmentGroupId)) {
+      throw new org.springframework.security.access.AccessDeniedException("Access only to own group attendance");
+    }
   }
 
   @PatchMapping("/{id}/archive")

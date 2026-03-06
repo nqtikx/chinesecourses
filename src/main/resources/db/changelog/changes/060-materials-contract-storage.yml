@@ -1,0 +1,197 @@
+databaseChangeLog:
+  - changeSet:
+      id: 060-create-study-material
+      author: chinesecourses
+      changes:
+        - createTable:
+            tableName: study_material
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: group_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_name
+                  type: varchar(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_type
+                  type: varchar(128)
+              - column:
+                  name: storage_path
+                  type: varchar(512)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: uploader_user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: "now()"
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: study_material
+            baseColumnNames: group_id
+            referencedTableName: study_group
+            referencedColumnNames: id
+            constraintName: fk_study_material_group
+            onDelete: cascade
+        - addForeignKeyConstraint:
+            baseTableName: study_material
+            baseColumnNames: uploader_user_id
+            referencedTableName: admin_user
+            referencedColumnNames: id
+            constraintName: fk_study_material_uploader
+            onDelete: restrict
+        - createIndex:
+            tableName: study_material
+            indexName: ix_study_material_group
+            columns:
+              - column:
+                  name: group_id
+
+  - changeSet:
+      id: 060-create-contract-document
+      author: chinesecourses
+      changes:
+        - createTable:
+            tableName: contract_document
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: enrollment_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: course_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: group_id
+                  type: bigint
+              - column:
+                  name: contract_number
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_name
+                  type: varchar(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: storage_path
+                  type: varchar(512)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: base_price
+                  type: numeric(12,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: discount_percent
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: final_price
+                  type: numeric(12,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: generated_by_user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: "now()"
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: contract_document
+            baseColumnNames: enrollment_id
+            referencedTableName: enrollment
+            referencedColumnNames: id
+            constraintName: fk_contract_doc_enrollment
+            onDelete: cascade
+        - addForeignKeyConstraint:
+            baseTableName: contract_document
+            baseColumnNames: user_id
+            referencedTableName: admin_user
+            referencedColumnNames: id
+            constraintName: fk_contract_doc_user
+            onDelete: restrict
+        - addForeignKeyConstraint:
+            baseTableName: contract_document
+            baseColumnNames: course_id
+            referencedTableName: course
+            referencedColumnNames: id
+            constraintName: fk_contract_doc_course
+            onDelete: restrict
+        - addForeignKeyConstraint:
+            baseTableName: contract_document
+            baseColumnNames: group_id
+            referencedTableName: study_group
+            referencedColumnNames: id
+            constraintName: fk_contract_doc_group
+            onDelete: set null
+        - addForeignKeyConstraint:
+            baseTableName: contract_document
+            baseColumnNames: generated_by_user_id
+            referencedTableName: admin_user
+            referencedColumnNames: id
+            constraintName: fk_contract_doc_generator
+            onDelete: restrict
+        - createIndex:
+            tableName: contract_document
+            indexName: ix_contract_doc_user
+            columns:
+              - column:
+                  name: user_id
+        - createIndex:
+            tableName: contract_document
+            indexName: ix_contract_doc_group
+            columns:
+              - column:
+                  name: group_id
+        - createIndex:
+            tableName: contract_document
+            indexName: ix_contract_doc_created_at
+            columns:
+              - column:
+                  name: created_at

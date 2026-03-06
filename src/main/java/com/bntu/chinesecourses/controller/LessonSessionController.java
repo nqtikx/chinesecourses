@@ -41,9 +41,17 @@ public class LessonSessionController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'GROUP')")
   public LessonSessionResponse get(@PathVariable Long id) {
-    return lessonSessionService.get(id, currentUserService.getCurrentTeacherId().orElse(null));
+    LessonSessionResponse response = lessonSessionService.get(id, currentUserService.getCurrentTeacherId().orElse(null));
+    if (currentUserService.isGroupAccount()) {
+      Long currentGroupId = currentUserService.getCurrentGroupId()
+          .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Group id is not linked"));
+      if (!currentGroupId.equals(response.groupId())) {
+        throw new org.springframework.security.access.AccessDeniedException("Access only to own group sessions");
+      }
+    }
+    return response;
   }
 
   @PutMapping("/{id}")
@@ -53,8 +61,15 @@ public class LessonSessionController {
   }
 
   @GetMapping
-  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'GROUP')")
   public List<LessonSessionResponse> findTop50(@RequestParam Long groupId) {
+    if (currentUserService.isGroupAccount()) {
+      Long currentGroupId = currentUserService.getCurrentGroupId()
+          .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Group id is not linked"));
+      if (!currentGroupId.equals(groupId)) {
+        throw new org.springframework.security.access.AccessDeniedException("Access only to own group sessions");
+      }
+    }
     return lessonSessionService.findTop50ByGroup(groupId, currentUserService.getCurrentTeacherId().orElse(null));
   }
 

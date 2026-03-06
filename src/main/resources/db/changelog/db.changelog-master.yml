@@ -17,3 +17,9 @@ databaseChangeLog:
       file: db/changelog/changes/040-seed-lessons-schedule-attendance.yml
   - include:
       file: db/changelog/changes/050-user-profile-contracts.yml
+  - include:
+      file: db/changelog/changes/060-materials-contract-storage.yml
+  - include:
+      file: db/changelog/changes/061-group-notes.yml
+  - include:
+      file: db/changelog/changes/062-group-shared-accounts.yml

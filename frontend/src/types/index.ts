@@ -1,4 +1,4 @@
-export type AdminRole = 'ROLE_ADMIN' | 'ROLE_TEACHER' | 'ROLE_USER';
+export type AdminRole = 'ROLE_ADMIN' | 'ROLE_TEACHER' | 'ROLE_USER' | 'ROLE_GROUP';
 export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
 export type EnrollmentStatus = 'APPLICANT' | 'ACTIVE' | 'COMPLETED';
 export type ChineseLevel = 'HSK1' | 'HSK2' | 'HSK3' | 'HSK4' | 'HSK5' | 'HSK6';
@@ -103,6 +103,77 @@ export interface AdminUserListItemResponse {
   role: AdminRole;
   personId: number | null;
   fullName: string | null;
+}
+
+export interface StudyMaterialResponse {
+  id: number;
+  groupId: number;
+  fileName: string;
+  fileType: string | null;
+  uploaderUserId: number;
+  createdAt: string;
+}
+
+export interface GroupNoteResponse {
+  id: number;
+  groupId: number;
+  authorUserId: number;
+  text: string;
+  createdAt: string;
+}
+
+export interface ClassProfileGroupItemResponse {
+  groupId: number;
+  groupName: string;
+  courseName: string;
+  semesterName: string;
+  teacherName: string;
+  studentsCount: number;
+}
+
+export interface ClassProfileResponse {
+  groupId: number;
+  groupName: string;
+  semesterId: number;
+  semesterName: string;
+  courseId: number;
+  courseName: string;
+  teacherId: number | null;
+  teacherName: string;
+  schedule: GroupScheduleRuleResponse[];
+  materials: StudyMaterialResponse[];
+  notes: GroupNoteResponse[];
+  students: PersonResponse[];
+}
+
+export interface ScheduleCellResponse {
+  dayOfWeek: number;
+  dayLabel: string;
+  startTime: string;
+  endTime: string;
+  room: string;
+}
+
+export interface GroupScheduleTableResponse {
+  groupId: number;
+  groupName: string;
+  courseName: string;
+  semesterName: string;
+  teacherName: string;
+  rows: ScheduleCellResponse[];
+}
+
+export interface ContractDocumentResponse {
+  id: number;
+  userId: number;
+  courseId: number;
+  groupId: number | null;
+  contractNumber: string;
+  fileName: string;
+  basePrice: number;
+  discountPercent: number;
+  finalPrice: number;
+  createdAt: string;
 }
 
 export interface LessonSessionResponse {

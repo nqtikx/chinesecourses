@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { adminUsersApi, contractsApi, coursesApi, semestersApi, studyGroupsApi } from '../api';
-import type { AdminUserListItemResponse, CourseResponse, SemesterResponse, StudyGroupResponse } from '../types';
+import type { AdminUserListItemResponse, ContractDocumentResponse, CourseResponse, SemesterResponse, StudyGroupResponse } from '../types';
 import { toast } from '../components/ui/Toast';
 import EmptyState from '../components/ui/EmptyState';
 import { FileText, Download } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function ContractsPage() {
+  const { isAdmin } = useAuth();
   const [users, setUsers] = useState<AdminUserListItemResponse[]>([]);
   const [courses, setCourses] = useState<CourseResponse[]>([]);
   const [semesters, setSemesters] = useState<SemesterResponse[]>([]);
@@ -15,11 +17,17 @@ export default function ContractsPage() {
   const [courseId, setCourseId] = useState<number | null>(null);
   const [groupId, setGroupId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [list, setList] = useState<ContractDocumentResponse[]>([]);
 
   useEffect(() => {
-    adminUsersApi.list().then(({ data }) => setUsers(data)).catch(() => toast('error', 'Не удалось загрузить пользователей'));
-    coursesApi.list().then(({ data }) => setCourses(data)).catch(() => toast('error', 'Не удалось загрузить курсы'));
-  }, []);
+    if (isAdmin) {
+      adminUsersApi.list().then(({ data }) => setUsers(data)).catch(() => toast('error', 'Не удалось загрузить пользователей'));
+      coursesApi.list().then(({ data }) => setCourses(data)).catch(() => toast('error', 'Не удалось загрузить курсы'));
+      contractsApi.all().then(({ data }) => setList(data)).catch(() => setList([]));
+    } else {
+      contractsApi.my().then(({ data }) => setList(data)).catch(() => setList([]));
+    }
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!courseId) {
@@ -53,16 +61,18 @@ export default function ContractsPage() {
     setLoading(true);
     try {
       const { data } = await contractsApi.generate({ userId, courseId, groupId: groupId ?? undefined });
-      const blob = new Blob([data], { type: 'application/pdf' });
+      const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `contract-user-${userId}-course-${courseId}.pdf`;
+      link.download = `contract-user-${userId}-course-${courseId}.docx`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      toast('success', 'PDF-договор сформирован');
+      toast('success', 'Word-договор сформирован');
+      const refreshed = await contractsApi.all();
+      setList(refreshed.data);
     } catch {
       toast('error', 'Не удалось сформировать договор');
     } finally {
@@ -80,11 +90,11 @@ export default function ContractsPage() {
         </div>
       </div>
 
-      {users.length === 0 || courses.length === 0 ? (
+      {isAdmin && (users.length === 0 || courses.length === 0) ? (
         <div className="bg-white rounded-xl border border-gray-200">
           <EmptyState message="Нет данных для генерации договора" />
         </div>
-      ) : (
+      ) : isAdmin ? (
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Пользователь *</label>
@@ -144,7 +154,42 @@ export default function ContractsPage() {
             </button>
           </div>
         </div>
-      )}
+      ) : null}
+
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Сохраненные договоры</h2>
+        {list.length === 0 ? (
+          <p className="text-sm text-gray-400">Пока нет документов</p>
+        ) : (
+          <div className="space-y-2">
+            {list.map((c) => (
+              <div key={c.id} className="rounded-lg border border-gray-200 p-3 flex justify-between items-center">
+                <div>
+                  <div className="text-sm font-medium text-gray-900">{c.contractNumber}</div>
+                  <div className="text-xs text-gray-500">Скидка: {c.discountPercent}% | Итого: {c.finalPrice}</div>
+                </div>
+                <button
+                  onClick={async () => {
+                    const { data } = await contractsApi.download(c.id);
+                    const b = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+                    const u = URL.createObjectURL(b);
+                    const a = document.createElement('a');
+                    a.href = u;
+                    a.download = c.fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(u);
+                  }}
+                  className="px-3 py-1.5 border rounded text-sm inline-flex items-center gap-1"
+                >
+                  <Download className="w-4 h-4" /> Скачать
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
