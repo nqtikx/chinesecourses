@@ -80,18 +80,34 @@ export default function EnrollmentsPage() {
     setLoading(true);
     try {
       const { data } = await enrollmentsApi.listByGroup(selectedGroup);
+      let groupStudentsMap = new Map<number, string>();
+      try {
+        const { data: classProfile } = await classProfilesApi.byGroup(selectedGroup);
+        groupStudentsMap = new Map(
+          classProfile.students.map((s) => [s.id, [s.lastName, s.firstName, s.middleName].filter(Boolean).join(' ')])
+        );
+      } catch {
+        groupStudentsMap = new Map();
+      }
       const enriched: EnrichedEnrollment[] = await Promise.all(data.map(async (e) => {
-        let studentName: string | undefined;
-        let payerName: string | undefined;
-        try {
-          const { data: p } = await personsApi.get(e.studentId);
-          studentName = [p.lastName, p.firstName, p.middleName].filter(Boolean).join(' ');
-        } catch { studentName = `#${e.studentId}`; }
+        let studentName: string | undefined = groupStudentsMap.get(e.studentId);
+        let payerName: string | undefined = undefined;
+        if (!studentName && !isGroup) {
+          try {
+            const { data: p } = await personsApi.get(e.studentId);
+            studentName = [p.lastName, p.firstName, p.middleName].filter(Boolean).join(' ');
+          } catch {
+            studentName = 'Неизвестный слушатель';
+          }
+        }
+        if (!studentName) {
+          studentName = 'Неизвестный слушатель';
+        }
         if (e.payerId) {
           try {
             const { data: p } = await personsApi.get(e.payerId);
             payerName = [p.lastName, p.firstName].filter(Boolean).join(' ');
-          } catch { payerName = `#${e.payerId}`; }
+          } catch { payerName = 'Неизвестный плательщик'; }
         }
         return { ...e, studentName, payerName };
       }));
@@ -239,7 +255,7 @@ export default function EnrollmentsPage() {
                       {e.studentName?.split(' ').map(w => w[0]).join('').slice(0, 2) || '?'}
                     </div>
                     <div className="min-w-0">
-                      <div className="font-medium text-gray-900 text-sm">{e.studentName || `Студент #${e.studentId}`}</div>
+                      <div className="font-medium text-gray-900 text-sm">{e.studentName || 'Неизвестный слушатель'}</div>
                       <div className="text-xs text-gray-400">
                         Записан: {new Date(e.createdAt).toLocaleDateString('ru')}
                         {e.payerName ? ` | Плательщик: ${e.payerName}` : ''}
