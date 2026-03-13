@@ -1,11 +1,11 @@
 package com.bntu.chinesecourses.service.impl;
 
 import com.bntu.chinesecourses.exception.BadRequestException;
-import com.bntu.chinesecourses.exception.ConflictException;
 import com.bntu.chinesecourses.exception.NotFoundException;
 import org.springframework.security.access.AccessDeniedException;
 import com.bntu.chinesecourses.model.dto.LessonSessionCreateRequest;
 import com.bntu.chinesecourses.model.dto.LessonSessionResponse;
+import com.bntu.chinesecourses.model.dto.LessonSessionStatusPatchRequest;
 import com.bntu.chinesecourses.model.dto.LessonSessionUpdateRequest;
 import com.bntu.chinesecourses.model.entity.LessonSessionEntity;
 import com.bntu.chinesecourses.model.entity.StudyGroupEntity;
@@ -15,6 +15,8 @@ import com.bntu.chinesecourses.repository.StudyGroupRepository;
 import com.bntu.chinesecourses.repository.TeacherRepository;
 import com.bntu.chinesecourses.service.LessonSessionService;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +42,7 @@ public class LessonSessionServiceImpl implements LessonSessionService {
   @Transactional
   public LessonSessionResponse create(LessonSessionCreateRequest request) {
     validateDates(request.startsAt(), request.endsAt());
+    validateOptionalDates(request.actualStartsAt(), request.actualEndsAt());
 
     StudyGroupEntity group = studyGroupRepository.findByIdAndArchivedFalse(request.groupId())
         .orElseThrow(() -> new NotFoundException("Study group not found: id=" + request.groupId()));
@@ -52,6 +55,11 @@ public class LessonSessionServiceImpl implements LessonSessionService {
         teacher,
         request.startsAt(),
         request.endsAt(),
+        request.actualStartsAt(),
+        request.actualEndsAt(),
+        null,
+        null,
+        null,
         normalizeTopic(request.topic()),
         normalizeRoom(request.room()),
         false,
@@ -88,6 +96,7 @@ public class LessonSessionServiceImpl implements LessonSessionService {
   @Transactional
   public LessonSessionResponse update(Long id, LessonSessionUpdateRequest request) {
     validateDates(request.startsAt(), request.endsAt());
+    validateOptionalDates(request.actualStartsAt(), request.actualEndsAt());
 
     LessonSessionEntity entity = lessonSessionRepository.findById(id)
         .orElseThrow(() -> new NotFoundException("Lesson session not found: id=" + id));
@@ -101,6 +110,8 @@ public class LessonSessionServiceImpl implements LessonSessionService {
     entity.setTeacher(teacher);
     entity.setStartsAt(request.startsAt());
     entity.setEndsAt(request.endsAt());
+    entity.setActualStartsAt(request.actualStartsAt());
+    entity.setActualEndsAt(request.actualEndsAt());
     entity.setTopic(normalizeTopic(request.topic()));
     entity.setRoom(normalizeRoom(request.room()));
     entity.setCanceled(request.canceled());
@@ -133,6 +144,49 @@ public class LessonSessionServiceImpl implements LessonSessionService {
 
   @Override
   @Transactional
+  public LessonSessionResponse patchStatus(
+      Long id,
+      LessonSessionStatusPatchRequest request,
+      Long approverUserId,
+      Long teacherIdFilter) {
+    LessonSessionEntity entity = lessonSessionRepository.findByIdAndArchivedFalse(id)
+        .orElseThrow(() -> new NotFoundException("Lesson session not found: id=" + id));
+    if (teacherIdFilter != null) {
+      ensureTeacherAccess(entity, teacherIdFilter);
+    }
+    validateOptionalDates(request.actualStartsAt(), request.actualEndsAt());
+    entity.setCanceled(request.canceled());
+    entity.setActualStartsAt(request.actualStartsAt());
+    entity.setActualEndsAt(request.actualEndsAt());
+    Instant now = Instant.now();
+    entity.setStatusMarkedAt(now);
+    entity.setStatusApprovedAt(now);
+    entity.setStatusApprovedBy(approverUserId);
+    return toResponse(entity);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<LessonSessionResponse> findByGroupAndDateRange(Long groupId, LocalDate from, LocalDate to, Long teacherIdFilter) {
+    StudyGroupEntity group = studyGroupRepository.findByIdAndArchivedFalse(groupId)
+        .orElseThrow(() -> new NotFoundException("Study group not found: id=" + groupId));
+    if (teacherIdFilter != null) {
+      Long groupTeacherId = group.getTeacher() == null ? null : group.getTeacher().getId();
+      if (!teacherIdFilter.equals(groupTeacherId)) {
+        throw new AccessDeniedException("Group does not belong to current teacher");
+      }
+    }
+    Instant fromInclusive = from.atStartOfDay().toInstant(ZoneOffset.UTC);
+    Instant toExclusive = to.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+    return lessonSessionRepository.findByArchivedFalseAndGroupIdAndStartsAtBetweenOrderByStartsAtAsc(
+            groupId, fromInclusive, toExclusive)
+        .stream()
+        .map(LessonSessionServiceImpl::toResponse)
+        .toList();
+  }
+
+  @Override
+  @Transactional
   public LessonSessionResponse setArchived(Long id, boolean archived) {
     LessonSessionEntity entity = lessonSessionRepository.findById(id)
         .orElseThrow(() -> new NotFoundException("Lesson session not found: id=" + id));
@@ -151,6 +205,26 @@ public class LessonSessionServiceImpl implements LessonSessionService {
   private static void validateDates(Instant startsAt, Instant endsAt) {
     if (!startsAt.isBefore(endsAt)) {
       throw new BadRequestException("startsAt must be before endsAt");
+    }
+  }
+
+  private static void validateOptionalDates(Instant startsAt, Instant endsAt) {
+    if (startsAt == null && endsAt == null) {
+      return;
+    }
+    if (startsAt == null || endsAt == null) {
+      throw new BadRequestException("actualStartsAt and actualEndsAt must be provided together");
+    }
+    if (!startsAt.isBefore(endsAt)) {
+      throw new BadRequestException("actualStartsAt must be before actualEndsAt");
+    }
+  }
+
+  private static void ensureTeacherAccess(LessonSessionEntity entity, Long teacherIdFilter) {
+    StudyGroupEntity group = entity.getGroup();
+    Long groupTeacherId = group.getTeacher() == null ? null : group.getTeacher().getId();
+    if (!teacherIdFilter.equals(groupTeacherId)) {
+      throw new AccessDeniedException("Lesson session does not belong to current teacher's groups");
     }
   }
 
@@ -178,9 +252,14 @@ public class LessonSessionServiceImpl implements LessonSessionService {
         teacherId,
         entity.getStartsAt(),
         entity.getEndsAt(),
+        entity.getActualStartsAt(),
+        entity.getActualEndsAt(),
         entity.getTopic(),
         entity.getRoom(),
         entity.isCanceled(),
+        entity.getStatusMarkedAt(),
+        entity.getStatusApprovedAt(),
+        entity.getStatusApprovedBy(),
         entity.isArchived(),
         entity.getCreatedAt()
     );

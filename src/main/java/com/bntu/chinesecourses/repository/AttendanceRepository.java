@@ -10,4 +10,5 @@ public interface AttendanceRepository extends JpaRepository<AttendanceEntity, Lo
   Optional<AttendanceEntity> findByIdAndArchivedFalse(Long id);
   List<AttendanceEntity> findTop50ByArchivedFalseAndLessonSessionIdOrderByMarkedAtDesc(Long lessonSessionId);
   List<AttendanceEntity> findTop50ByArchivedFalseAndEnrollmentIdOrderByMarkedAtDesc(Long enrollmentId);
+  List<AttendanceEntity> findByArchivedFalseAndLessonSessionIdInOrderByMarkedAtDesc(List<Long> lessonSessionIds);
 }

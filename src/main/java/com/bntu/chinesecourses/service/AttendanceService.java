@@ -1,8 +1,10 @@
 package com.bntu.chinesecourses.service;
 
 import com.bntu.chinesecourses.model.dto.AttendanceCreateRequest;
+import com.bntu.chinesecourses.model.dto.AttendanceJournalResponse;
 import com.bntu.chinesecourses.model.dto.AttendanceResponse;
 import com.bntu.chinesecourses.model.dto.AttendanceUpdateRequest;
+import java.time.LocalDate;
 import java.util.List;
 
 public interface AttendanceService {
@@ -23,6 +25,8 @@ public interface AttendanceService {
 
   List<AttendanceResponse> findTop50ByEnrollment(Long enrollmentId);
   List<AttendanceResponse> findTop50ByEnrollment(Long enrollmentId, Long teacherIdFilter);
+
+  AttendanceJournalResponse getJournal(Long groupId, LocalDate from, LocalDate to, Long teacherIdFilter);
 
   AttendanceResponse setArchived(Long id, boolean archived);
   AttendanceResponse setArchived(Long id, boolean archived, Long teacherIdFilter);

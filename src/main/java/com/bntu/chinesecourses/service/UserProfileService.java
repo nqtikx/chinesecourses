@@ -2,6 +2,8 @@ package com.bntu.chinesecourses.service;
 
 import com.bntu.chinesecourses.exception.NotFoundException;
 import com.bntu.chinesecourses.model.dto.AdminUserListItemResponse;
+import com.bntu.chinesecourses.model.dto.PersonGuardianResponse;
+import com.bntu.chinesecourses.model.dto.PersonGuardianUpdateRequest;
 import com.bntu.chinesecourses.model.dto.ProfileCourseItemResponse;
 import com.bntu.chinesecourses.model.dto.ProfileUpdateRequest;
 import com.bntu.chinesecourses.model.dto.UserProfileResponse;
@@ -9,14 +11,17 @@ import com.bntu.chinesecourses.model.entity.AdminUserEntity;
 import com.bntu.chinesecourses.model.entity.CourseEntity;
 import com.bntu.chinesecourses.model.entity.EnrollmentEntity;
 import com.bntu.chinesecourses.model.entity.PersonEntity;
+import com.bntu.chinesecourses.model.entity.PersonGuardianEntity;
 import com.bntu.chinesecourses.model.entity.SemesterEntity;
 import com.bntu.chinesecourses.model.entity.StudyGroupEntity;
 import com.bntu.chinesecourses.model.entity.TeacherEntity;
 import com.bntu.chinesecourses.repository.CourseRepository;
 import com.bntu.chinesecourses.repository.PersonRepository;
+import com.bntu.chinesecourses.repository.PersonGuardianRepository;
 import com.bntu.chinesecourses.repository.SemesterRepository;
 import com.bntu.chinesecourses.repository.StudyGroupRepository;
 import com.bntu.chinesecourses.repository.TeacherRepository;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +32,7 @@ public class UserProfileService {
   private final AdminUserService adminUserService;
   private final EnrollmentService enrollmentService;
   private final PersonRepository personRepository;
+  private final PersonGuardianRepository personGuardianRepository;
   private final SemesterRepository semesterRepository;
   private final CourseRepository courseRepository;
   private final StudyGroupRepository studyGroupRepository;
@@ -36,6 +42,7 @@ public class UserProfileService {
       AdminUserService adminUserService,
       EnrollmentService enrollmentService,
       PersonRepository personRepository,
+      PersonGuardianRepository personGuardianRepository,
       SemesterRepository semesterRepository,
       CourseRepository courseRepository,
       StudyGroupRepository studyGroupRepository,
@@ -44,6 +51,7 @@ public class UserProfileService {
     this.adminUserService = adminUserService;
     this.enrollmentService = enrollmentService;
     this.personRepository = personRepository;
+    this.personGuardianRepository = personGuardianRepository;
     this.semesterRepository = semesterRepository;
     this.courseRepository = courseRepository;
     this.studyGroupRepository = studyGroupRepository;
@@ -86,6 +94,30 @@ public class UserProfileService {
     if (request.phone() != null) {
       String phone = request.phone().trim().isEmpty() ? null : request.phone().trim();
       person.setPhone(phone);
+    }
+    if (request.residentialAddress() != null) {
+      person.setResidentialAddress(normalizeText(request.residentialAddress()));
+    }
+    if (request.documentType() != null) {
+      person.setDocumentType(normalizeText(request.documentType()));
+    }
+    if (request.documentSeries() != null) {
+      person.setDocumentSeries(normalizeText(request.documentSeries()));
+    }
+    if (request.documentNumber() != null) {
+      person.setDocumentNumber(normalizeText(request.documentNumber()));
+    }
+    if (request.documentIssueDate() != null) {
+      person.setDocumentIssueDate(request.documentIssueDate());
+    }
+    if (request.documentIssuedBy() != null) {
+      person.setDocumentIssuedBy(normalizeText(request.documentIssuedBy()));
+    }
+    if (request.documentIdentificationNumber() != null) {
+      person.setDocumentIdentificationNumber(normalizeText(request.documentIdentificationNumber()));
+    }
+    if (request.guardians() != null) {
+      replaceGuardians(personId, request.guardians());
     }
     return buildProfile(user);
   }
@@ -145,6 +177,27 @@ public class UserProfileService {
     String fullName = person == null ? null : buildFullName(person.getLastName(), person.getFirstName(), person.getMiddleName());
     String email = person == null ? null : person.getEmail();
     String phone = person == null ? null : person.getPhone();
+    String residentialAddress = person == null ? null : person.getResidentialAddress();
+    String documentType = person == null ? null : person.getDocumentType();
+    String documentSeries = person == null ? null : person.getDocumentSeries();
+    String documentNumber = person == null ? null : person.getDocumentNumber();
+    java.time.LocalDate documentIssueDate = person == null ? null : person.getDocumentIssueDate();
+    String documentIssuedBy = person == null ? null : person.getDocumentIssuedBy();
+    String documentIdentificationNumber = person == null ? null : person.getDocumentIdentificationNumber();
+    List<PersonGuardianResponse> guardians = personId == null ? List.of() : loadGuardians(personId);
+
+    String teacherFullName = null;
+    String teacherPhone = null;
+    String teacherEmail = null;
+    if (current != null && current.groupId() != null) {
+      StudyGroupEntity group = studyGroupRepository.findById(current.groupId()).orElse(null);
+      if (group != null && group.getTeacher() != null && group.getTeacher().getPerson() != null) {
+        PersonEntity tp = group.getTeacher().getPerson();
+        teacherFullName = buildFullName(tp.getLastName(), tp.getFirstName(), tp.getMiddleName());
+        teacherPhone = tp.getPhone();
+        teacherEmail = tp.getEmail();
+      }
+    }
 
     return new UserProfileResponse(
         user.getId(),
@@ -154,6 +207,17 @@ public class UserProfileService {
         fullName,
         email,
         phone,
+        residentialAddress,
+        documentType,
+        documentSeries,
+        documentNumber,
+        documentIssueDate,
+        documentIssuedBy,
+        documentIdentificationNumber,
+        guardians,
+        teacherFullName,
+        teacherPhone,
+        teacherEmail,
         current,
         completed
     );
@@ -188,5 +252,50 @@ public class UserProfileService {
       return lastName + " " + firstName;
     }
     return lastName + " " + firstName + " " + middleName;
+  }
+
+  private static String normalizeText(String value) {
+    if (value == null) {
+      return null;
+    }
+    String trimmed = value.trim();
+    return trimmed.isEmpty() ? null : trimmed;
+  }
+
+  private List<PersonGuardianResponse> loadGuardians(Long personId) {
+    return personGuardianRepository.findByChildPersonIdAndArchivedFalseOrderByPrimaryGuardianDescCreatedAtAsc(personId)
+        .stream()
+        .map(g -> new PersonGuardianResponse(
+            g.getId(),
+            g.getChildPersonId(),
+            g.getFullName(),
+            g.getPhone(),
+            g.getRelationType(),
+            g.isPrimaryGuardian(),
+            g.isArchived(),
+            g.getCreatedAt()))
+        .toList();
+  }
+
+  private void replaceGuardians(Long childPersonId, List<PersonGuardianUpdateRequest> guardians) {
+    List<PersonGuardianEntity> existing = personGuardianRepository.findByChildPersonIdAndArchivedFalseOrderByPrimaryGuardianDescCreatedAtAsc(childPersonId);
+    for (PersonGuardianEntity item : existing) {
+      item.setArchived(true);
+    }
+    for (PersonGuardianUpdateRequest guardian : guardians) {
+      String fullName = normalizeText(guardian.fullName());
+      if (fullName == null) {
+        continue;
+      }
+      personGuardianRepository.save(new PersonGuardianEntity(
+          null,
+          childPersonId,
+          fullName,
+          normalizeText(guardian.phone()),
+          normalizeText(guardian.relationType()),
+          guardian.primaryGuardian(),
+          guardian.archived(),
+          Instant.now()));
+    }
   }
 }

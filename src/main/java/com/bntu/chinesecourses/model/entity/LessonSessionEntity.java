@@ -33,6 +33,21 @@ public class LessonSessionEntity {
   @Column(name = "ends_at", nullable = false)
   private Instant endsAt;
 
+  @Column(name = "actual_starts_at")
+  private Instant actualStartsAt;
+
+  @Column(name = "actual_ends_at")
+  private Instant actualEndsAt;
+
+  @Column(name = "status_marked_at")
+  private Instant statusMarkedAt;
+
+  @Column(name = "status_approved_at")
+  private Instant statusApprovedAt;
+
+  @Column(name = "status_approved_by")
+  private Long statusApprovedBy;
+
   @Column(name = "topic", length = 256)
   private String topic;
 
@@ -57,6 +72,11 @@ public class LessonSessionEntity {
       TeacherEntity teacher,
       Instant startsAt,
       Instant endsAt,
+      Instant actualStartsAt,
+      Instant actualEndsAt,
+      Instant statusMarkedAt,
+      Instant statusApprovedAt,
+      Long statusApprovedBy,
       String topic,
       String room,
       boolean canceled,
@@ -68,6 +88,11 @@ public class LessonSessionEntity {
     this.teacher = teacher;
     this.startsAt = startsAt;
     this.endsAt = endsAt;
+    this.actualStartsAt = actualStartsAt;
+    this.actualEndsAt = actualEndsAt;
+    this.statusMarkedAt = statusMarkedAt;
+    this.statusApprovedAt = statusApprovedAt;
+    this.statusApprovedBy = statusApprovedBy;
     this.topic = topic;
     this.room = room;
     this.canceled = canceled;
@@ -97,6 +122,26 @@ public class LessonSessionEntity {
 
   public String getTopic() {
     return topic;
+  }
+
+  public Instant getActualStartsAt() {
+    return actualStartsAt;
+  }
+
+  public Instant getActualEndsAt() {
+    return actualEndsAt;
+  }
+
+  public Instant getStatusMarkedAt() {
+    return statusMarkedAt;
+  }
+
+  public Instant getStatusApprovedAt() {
+    return statusApprovedAt;
+  }
+
+  public Long getStatusApprovedBy() {
+    return statusApprovedBy;
   }
 
   public String getRoom() {
@@ -129,6 +174,26 @@ public class LessonSessionEntity {
 
   public void setEndsAt(Instant endsAt) {
     this.endsAt = endsAt;
+  }
+
+  public void setActualStartsAt(Instant actualStartsAt) {
+    this.actualStartsAt = actualStartsAt;
+  }
+
+  public void setActualEndsAt(Instant actualEndsAt) {
+    this.actualEndsAt = actualEndsAt;
+  }
+
+  public void setStatusMarkedAt(Instant statusMarkedAt) {
+    this.statusMarkedAt = statusMarkedAt;
+  }
+
+  public void setStatusApprovedAt(Instant statusApprovedAt) {
+    this.statusApprovedAt = statusApprovedAt;
+  }
+
+  public void setStatusApprovedBy(Long statusApprovedBy) {
+    this.statusApprovedBy = statusApprovedBy;
   }
 
   public void setTopic(String topic) {

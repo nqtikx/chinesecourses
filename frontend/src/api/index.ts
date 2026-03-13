@@ -9,10 +9,12 @@ import type {
   EnrollmentResponse, EnrollmentCreateRequest, EnrollmentUpdateRequest,
   LessonSessionResponse, LessonSessionCreateRequest, LessonSessionUpdateRequest,
   AttendanceResponse, AttendanceCreateRequest, AttendanceUpdateRequest,
+  AttendanceJournalResponse,
   GroupScheduleRuleResponse, GroupScheduleRuleCreateRequest, GroupScheduleRuleUpdateRequest,
   ArchiveRequest, EnrollmentStatus, ChineseLevel, UserProfileResponse, AdminUserListItemResponse,
   ClassProfileResponse, StudyMaterialResponse, GroupScheduleTableResponse, ContractDocumentResponse,
-  ClassProfileGroupItemResponse, GroupNoteResponse,
+  ClassProfileGroupItemResponse, GroupNoteResponse, LessonSessionStatusPatchRequest,
+  AcademicHolidayResponse, AcademicHolidayCreateRequest, AcademicHolidayUpdateRequest, PersonGuardianUpdateRequest,
 } from '../types';
 
 export const authApi = {
@@ -30,6 +32,14 @@ export const profileApi = {
     birthDate?: string;
     email?: string;
     phone?: string;
+    residentialAddress?: string;
+    documentType?: string;
+    documentSeries?: string;
+    documentNumber?: string;
+    documentIssueDate?: string;
+    documentIssuedBy?: string;
+    documentIdentificationNumber?: string;
+    guardians?: PersonGuardianUpdateRequest[];
   }) => client.patch<UserProfileResponse>('/api/profile/me', data),
 };
 
@@ -89,9 +99,13 @@ export const enrollmentsApi = {
 
 export const lessonSessionsApi = {
   listByGroup: (groupId: number) => client.get<LessonSessionResponse[]>(`/api/lesson-sessions?groupId=${groupId}`),
+  listByRange: (groupId: number, from: string, to: string) =>
+    client.get<LessonSessionResponse[]>(`/api/lesson-sessions/range?groupId=${groupId}&from=${from}&to=${to}`),
   get: (id: number) => client.get<LessonSessionResponse>(`/api/lesson-sessions/${id}`),
   create: (data: LessonSessionCreateRequest) => client.post<LessonSessionResponse>('/api/lesson-sessions', data),
   update: (id: number, data: LessonSessionUpdateRequest) => client.put<LessonSessionResponse>(`/api/lesson-sessions/${id}`, data),
+  patchStatus: (id: number, data: LessonSessionStatusPatchRequest) =>
+    client.patch<LessonSessionResponse>(`/api/lesson-sessions/${id}/status`, data),
   archive: (id: number, req: ArchiveRequest) => client.patch(`/api/lesson-sessions/${id}/archive`, req),
 };
 
@@ -102,6 +116,8 @@ export const attendanceApi = {
   create: (data: AttendanceCreateRequest) => client.post<AttendanceResponse>('/api/attendance', data),
   update: (id: number, data: AttendanceUpdateRequest) => client.put<AttendanceResponse>(`/api/attendance/${id}`, data),
   archive: (id: number, req: ArchiveRequest) => client.patch(`/api/attendance/${id}/archive`, req),
+  journal: (groupId: number, from: string, to: string) =>
+    client.get<AttendanceJournalResponse>(`/api/attendance/journal?groupId=${groupId}&from=${from}&to=${to}`),
 };
 
 export const scheduleRulesApi = {
@@ -156,6 +172,18 @@ export const materialsApi = {
 };
 
 export const scheduleTableApi = {
-  get: (groupId: number) => client.get<GroupScheduleTableResponse>(`/api/schedule-table/group/${groupId}`),
-  exportXlsx: (groupId: number) => client.get(`/api/schedule-table/group/${groupId}/export`, { responseType: 'blob' }),
+  get: (groupId: number, weekStart?: string) => {
+    const q = weekStart ? `?weekStart=${weekStart}` : '';
+    return client.get<GroupScheduleTableResponse>(`/api/schedule-table/group/${groupId}${q}`);
+  },
+  exportXlsx: (groupId: number, weekStart?: string) => {
+    const q = weekStart ? `?weekStart=${weekStart}` : '';
+    return client.get(`/api/schedule-table/group/${groupId}/export${q}`, { responseType: 'blob' });
+  },
+};
+
+export const holidaysApi = {
+  list: () => client.get<AcademicHolidayResponse[]>('/api/holidays'),
+  create: (data: AcademicHolidayCreateRequest) => client.post<AcademicHolidayResponse>('/api/holidays', data),
+  update: (id: number, data: AcademicHolidayUpdateRequest) => client.put<AcademicHolidayResponse>(`/api/holidays/${id}`, data),
 };

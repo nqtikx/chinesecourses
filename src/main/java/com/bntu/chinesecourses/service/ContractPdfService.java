@@ -8,11 +8,13 @@ import com.bntu.chinesecourses.model.entity.ContractDocumentEntity;
 import com.bntu.chinesecourses.model.entity.CourseEntity;
 import com.bntu.chinesecourses.model.entity.EnrollmentEntity;
 import com.bntu.chinesecourses.model.entity.PersonEntity;
+import com.bntu.chinesecourses.model.entity.PersonGuardianEntity;
 import com.bntu.chinesecourses.model.entity.StudyGroupEntity;
 import com.bntu.chinesecourses.repository.ContractDocumentRepository;
 import com.bntu.chinesecourses.repository.CourseRepository;
 import com.bntu.chinesecourses.repository.EnrollmentRepository;
 import com.bntu.chinesecourses.repository.PersonRepository;
+import com.bntu.chinesecourses.repository.PersonGuardianRepository;
 import com.bntu.chinesecourses.repository.StudyGroupRepository;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -47,6 +49,7 @@ public class ContractPdfService {
   private final EnrollmentService enrollmentService;
   private final EnrollmentRepository enrollmentRepository;
   private final PersonRepository personRepository;
+  private final PersonGuardianRepository personGuardianRepository;
   private final CourseRepository courseRepository;
   private final StudyGroupRepository studyGroupRepository;
   private final ContractDocumentRepository contractDocumentRepository;
@@ -62,6 +65,7 @@ public class ContractPdfService {
       EnrollmentService enrollmentService,
       EnrollmentRepository enrollmentRepository,
       PersonRepository personRepository,
+      PersonGuardianRepository personGuardianRepository,
       CourseRepository courseRepository,
       StudyGroupRepository studyGroupRepository,
       ContractDocumentRepository contractDocumentRepository,
@@ -75,6 +79,7 @@ public class ContractPdfService {
     this.enrollmentService = enrollmentService;
     this.enrollmentRepository = enrollmentRepository;
     this.personRepository = personRepository;
+    this.personGuardianRepository = personGuardianRepository;
     this.courseRepository = courseRepository;
     this.studyGroupRepository = studyGroupRepository;
     this.contractDocumentRepository = contractDocumentRepository;
@@ -110,15 +115,14 @@ public class ContractPdfService {
 
     String contractNumber = resolveOrCreateContractNumber(enrollment);
 
-    int discountPercent = enrollmentService.findCompletedForStudent(personId).isEmpty()
-        ? 0
-        : repeatDiscountPercent;
+    int discountPercent = resolveDiscountPercent(personId, enrollment);
 
     PriceCalculation calculation = calculatePrice(semesterBasePrice, discountPercent);
 
     byte[] docxBytes = buildWord(
         contractNumber,
         person,
+        personGuardianRepository.findByChildPersonIdAndArchivedFalseOrderByPrimaryGuardianDescCreatedAtAsc(person.getId()),
         course.getName(),
         LocalDate.now(),
         calculation.finalPrice());
@@ -248,12 +252,21 @@ public class ContractPdfService {
   private byte[] buildWord(
       String contractNumber,
       PersonEntity person,
+      List<PersonGuardianEntity> guardians,
       String courseName,
       LocalDate generatedAt,
       BigDecimal finalPrice) {
     try (XWPFDocument document = new XWPFDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
       String fullName = safe(buildFullName(person.getLastName(), person.getFirstName(), person.getMiddleName()));
       String phone = safe(person.getPhone());
+      PersonGuardianEntity primaryGuardian = guardians.stream()
+          .filter(PersonGuardianEntity::isPrimaryGuardian)
+          .findFirst()
+          .orElse(guardians.isEmpty() ? null : guardians.get(0));
+      String guardianName = primaryGuardian == null ? "___________________________________________________" : safe(primaryGuardian.getFullName());
+      String guardianPhone = primaryGuardian == null ? "___________________" : safe(primaryGuardian.getPhone());
+      String residentialAddress = safe(person.getResidentialAddress());
+      String documentLine = buildDocumentLine(person);
       String priceValue = finalPrice.setScale(2, RoundingMode.HALF_UP).toPlainString();
       boolean childContract = isChildContract(courseName);
       int academicHours = resolveAcademicHours(courseName);
@@ -276,6 +289,7 @@ public class ContractPdfService {
       addParagraph(document, "________________________________________________________________________________________________________,", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
       if (childContract) {
         addParagraph(document, "(ФИО законного представителя ребёнка)", ParagraphAlignment.CENTER, BODY_FONT_SIZE, false, 0);
+        addParagraph(document, guardianName, ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "________________________________________________________________________________________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "(ФИО ребёнка на русском языке)", ParagraphAlignment.CENTER, BODY_FONT_SIZE, false, 0);
         addParagraph(document, fullName, ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
@@ -350,24 +364,25 @@ public class ContractPdfService {
         addParagraph(document, fullName, ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "___________________________________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "ФИО законного представителя ребёнка:", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
+        addParagraph(document, guardianName, ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "___________________________________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "___________________________________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
-        addParagraph(document, "Адрес проживания ребёнка:___________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
+        addParagraph(document, "Адрес проживания ребёнка: " + residentialAddress, ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "___________________________________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "Документ, удостоверяющий личность законного представителя ребёнка (вид, серия), номер, дата выдачи, наименование государственного органа, его выдавшего, идентификационный номер (при наличии):", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
+        addParagraph(document, documentLine, ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "___________________________________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
-        addParagraph(document, "___________________________________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
-        addParagraph(document, "Моб. телефон: законного представителя ребёнка ___________________ и ребёнка " + phone + ".", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
+        addParagraph(document, "Моб. телефон: законного представителя ребёнка " + guardianPhone + " и ребёнка " + phone + ".", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "________________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "(подпись законного представителя ребёнка)", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
       } else {
         addParagraph(document, "ФИО:______________________________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, fullName, ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "________________________________________________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
-        addParagraph(document, "Адрес проживания:__________________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
+        addParagraph(document, "Адрес проживания: " + residentialAddress, ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "___________________________________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "Документ, удостоверяющий личность (вид, серия (при наличии), номер, дата выдачи, наименование государственного органа, его выдавшего, идентификационный номер (при наличии):", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
-        addParagraph(document, "___________________________________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
+        addParagraph(document, documentLine, ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "___________________________________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "Моб. телефон " + phone, ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
         addParagraph(document, "_____________________________", ParagraphAlignment.LEFT, BODY_FONT_SIZE, false, 0);
@@ -412,6 +427,35 @@ public class ContractPdfService {
   private static int resolveAcademicHours(String courseName) {
     String normalized = safe(courseName).toLowerCase();
     return normalized.contains("техническ") ? 96 : 64;
+  }
+
+  private int resolveDiscountPercent(Long studentId, EnrollmentEntity currentEnrollment) {
+    List<EnrollmentEntity> completed = enrollmentService.findCompletedForStudent(studentId);
+    if (completed.isEmpty()) {
+      return 0;
+    }
+    EnrollmentEntity latestCompleted = completed.getFirst();
+    LocalDate previousEnd = latestCompleted.getEndDate() != null
+        ? latestCompleted.getEndDate()
+        : latestCompleted.getCreatedAt().atZone(java.time.ZoneOffset.UTC).toLocalDate();
+    LocalDate currentStart = currentEnrollment.getStartDate() != null
+        ? currentEnrollment.getStartDate()
+        : currentEnrollment.getCreatedAt().atZone(java.time.ZoneOffset.UTC).toLocalDate();
+    if (currentStart.isAfter(previousEnd.plusDays(1))) {
+      return 0;
+    }
+    return repeatDiscountPercent;
+  }
+
+  private static String buildDocumentLine(PersonEntity person) {
+    String type = safe(person.getDocumentType());
+    String series = safe(person.getDocumentSeries());
+    String number = safe(person.getDocumentNumber());
+    String issueDate = person.getDocumentIssueDate() == null ? "-" : person.getDocumentIssueDate().toString();
+    String issuedBy = safe(person.getDocumentIssuedBy());
+    String identificationNumber = safe(person.getDocumentIdentificationNumber());
+    return type + ", серия " + series + ", № " + number + ", дата выдачи " + issueDate
+        + ", выдан " + issuedBy + ", идентификационный номер " + identificationNumber + ".";
   }
 
   private static String safe(String value) {

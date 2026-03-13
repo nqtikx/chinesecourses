@@ -1,5 +1,6 @@
 package com.bntu.chinesecourses.model.dto;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public record GroupScheduleTableResponse(
@@ -8,6 +9,7 @@ public record GroupScheduleTableResponse(
     String courseName,
     String semesterName,
     String teacherName,
+    LocalDate weekStart,
     List<ScheduleCellResponse> rows
 ) {
 }

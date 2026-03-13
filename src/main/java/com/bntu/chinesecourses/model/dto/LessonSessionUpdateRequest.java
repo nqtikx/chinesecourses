@@ -8,6 +8,8 @@ public record LessonSessionUpdateRequest(
     Long teacherId,
     @NotNull Instant startsAt,
     @NotNull Instant endsAt,
+    Instant actualStartsAt,
+    Instant actualEndsAt,
     String topic,
     String room,
     boolean canceled,

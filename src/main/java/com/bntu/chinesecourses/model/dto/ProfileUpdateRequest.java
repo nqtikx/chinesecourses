@@ -8,6 +8,14 @@ public record ProfileUpdateRequest(
     String middleName,
     LocalDate birthDate,
     String email,
-    String phone
+    String phone,
+    String residentialAddress,
+    String documentType,
+    String documentSeries,
+    String documentNumber,
+    LocalDate documentIssueDate,
+    String documentIssuedBy,
+    String documentIdentificationNumber,
+    java.util.List<PersonGuardianUpdateRequest> guardians
 ) {
 }
