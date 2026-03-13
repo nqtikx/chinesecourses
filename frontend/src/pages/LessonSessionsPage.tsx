@@ -25,6 +25,7 @@ export default function LessonSessionsPage() {
     groupId: 0, teacherId: '', startsAt: '', endsAt: '', actualStartsAt: '', actualEndsAt: '', topic: '', room: '',
   });
   const [teacherNames, setTeacherNames] = useState<Record<number, string>>({});
+  const [showArchivedOnly, setShowArchivedOnly] = useState(false);
 
   useEffect(() => { coursesApi.list().then(({ data }) => { setCourses(data); if (data.length) setSelectedCourse(data[0].id); }); }, []);
 
@@ -156,7 +157,10 @@ export default function LessonSessionsPage() {
   const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
 
   const groupedByDate: Record<string, LessonSessionResponse[]> = {};
-  sessions.forEach(s => {
+  const visibleSessions = showArchivedOnly
+    ? sessions.filter((s) => s.archived)
+    : sessions.filter((s) => !s.archived);
+  visibleSessions.forEach(s => {
     const key = fmtDate(s.startsAt);
     if (!groupedByDate[key]) groupedByDate[key] = [];
     groupedByDate[key].push(s);
@@ -180,7 +184,7 @@ export default function LessonSessionsPage() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Курс</label>
             <select value={selectedCourse || ''} onChange={(e) => setSelectedCourse(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500">
@@ -199,13 +203,28 @@ export default function LessonSessionsPage() {
               {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Архив</label>
+            <button
+              onClick={() => setShowArchivedOnly((v) => !v)}
+              className={`w-full px-3 py-2 rounded-lg border text-sm transition-colors ${
+                showArchivedOnly
+                  ? 'border-amber-300 bg-amber-50 text-amber-700'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {showArchivedOnly ? 'Показывать только архивные' : 'Скрыть архивные'}
+            </button>
+          </div>
         </div>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent" /></div>
-      ) : sessions.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200"><EmptyState message="Занятия не найдены для выбранной группы" /></div>
+      ) : visibleSessions.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <EmptyState message={showArchivedOnly ? 'Архивные занятия не найдены для выбранной группы' : 'Активные занятия не найдены для выбранной группы'} />
+        </div>
       ) : (
         <div className="space-y-4">
           {Object.entries(groupedByDate).map(([date, dayLessons]) => (
