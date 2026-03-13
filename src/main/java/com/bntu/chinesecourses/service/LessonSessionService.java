@@ -17,6 +17,7 @@ public interface LessonSessionService {
   List<LessonSessionResponse> findTop50ByGroup(Long groupId);
   /** When teacherIdFilter is non-null, returns 403 if group is not assigned to that teacher. */
   List<LessonSessionResponse> findTop50ByGroup(Long groupId, Long teacherIdFilter);
+  List<LessonSessionResponse> findTop50ByGroup(Long groupId, Long teacherIdFilter, boolean includeArchived);
   LessonSessionResponse patchStatus(Long id, LessonSessionStatusPatchRequest request, Long approverUserId, Long teacherIdFilter);
   List<LessonSessionResponse> findByGroupAndDateRange(Long groupId, LocalDate from, LocalDate to, Long teacherIdFilter);
   LessonSessionResponse setArchived(Long id, boolean archived);

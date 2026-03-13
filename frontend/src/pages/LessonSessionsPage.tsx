@@ -51,12 +51,12 @@ export default function LessonSessionsPage() {
   useEffect(() => {
     if (selectedGroup) {
       setLoading(true);
-      lessonSessionsApi.listByGroup(selectedGroup).then(({ data }) => {
+      lessonSessionsApi.listByGroup(selectedGroup, showArchivedOnly).then(({ data }) => {
         const sorted = [...data].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
         setSessions(sorted);
       }).finally(() => setLoading(false));
     } else { setSessions([]); }
-  }, [selectedGroup]);
+  }, [selectedGroup, showArchivedOnly]);
 
   const resolveTeacherNames = async (grps: StudyGroupResponse[]) => {
     const tIds = [...new Set(grps.map(g => g.teacherId).filter(Boolean))] as number[];
@@ -73,7 +73,7 @@ export default function LessonSessionsPage() {
 
   const reload = async () => {
     if (selectedGroup) {
-      const { data } = await lessonSessionsApi.listByGroup(selectedGroup);
+      const { data } = await lessonSessionsApi.listByGroup(selectedGroup, showArchivedOnly);
       const sorted = [...data].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
       setSessions(sorted);
     }

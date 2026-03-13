@@ -123,12 +123,18 @@ public class LessonSessionServiceImpl implements LessonSessionService {
   @Override
   @Transactional(readOnly = true)
   public List<LessonSessionResponse> findTop50ByGroup(Long groupId) {
-    return findTop50ByGroup(groupId, null);
+    return findTop50ByGroup(groupId, null, false);
   }
 
   @Override
   @Transactional(readOnly = true)
   public List<LessonSessionResponse> findTop50ByGroup(Long groupId, Long teacherIdFilter) {
+    return findTop50ByGroup(groupId, teacherIdFilter, false);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<LessonSessionResponse> findTop50ByGroup(Long groupId, Long teacherIdFilter, boolean includeArchived) {
     if (teacherIdFilter != null) {
       StudyGroupEntity group = studyGroupRepository.findByIdAndArchivedFalse(groupId)
           .orElseThrow(() -> new NotFoundException("Study group not found: id=" + groupId));
@@ -137,7 +143,10 @@ public class LessonSessionServiceImpl implements LessonSessionService {
         throw new AccessDeniedException("Group does not belong to current teacher");
       }
     }
-    return lessonSessionRepository.findTop50ByArchivedFalseAndGroupIdOrderByStartsAtDesc(groupId).stream()
+    List<LessonSessionEntity> sessions = includeArchived
+        ? lessonSessionRepository.findTop50ByGroupIdOrderByStartsAtDesc(groupId)
+        : lessonSessionRepository.findTop50ByArchivedFalseAndGroupIdOrderByStartsAtDesc(groupId);
+    return sessions.stream()
         .map(LessonSessionServiceImpl::toResponse)
         .toList();
   }

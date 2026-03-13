@@ -10,6 +10,7 @@ public interface LessonSessionRepository extends JpaRepository<LessonSessionEnti
 
   Optional<LessonSessionEntity> findByIdAndArchivedFalse(Long id);
   List<LessonSessionEntity> findTop50ByArchivedFalseAndGroupIdOrderByStartsAtDesc(Long groupId);
+  List<LessonSessionEntity> findTop50ByGroupIdOrderByStartsAtDesc(Long groupId);
   List<LessonSessionEntity> findByArchivedFalseAndGroupIdAndStartsAtBetweenOrderByStartsAtAsc(
       Long groupId,
       Instant fromInclusive,

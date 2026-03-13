@@ -98,7 +98,8 @@ export const enrollmentsApi = {
 };
 
 export const lessonSessionsApi = {
-  listByGroup: (groupId: number) => client.get<LessonSessionResponse[]>(`/api/lesson-sessions?groupId=${groupId}`),
+  listByGroup: (groupId: number, includeArchived = false) =>
+    client.get<LessonSessionResponse[]>(`/api/lesson-sessions?groupId=${groupId}&includeArchived=${includeArchived}`),
   listByRange: (groupId: number, from: string, to: string) =>
     client.get<LessonSessionResponse[]>(`/api/lesson-sessions/range?groupId=${groupId}&from=${from}&to=${to}`),
   get: (id: number) => client.get<LessonSessionResponse>(`/api/lesson-sessions/${id}`),
