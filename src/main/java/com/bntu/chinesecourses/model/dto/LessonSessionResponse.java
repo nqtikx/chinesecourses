@@ -8,9 +8,14 @@ public record LessonSessionResponse(
     Long teacherId,
     Instant startsAt,
     Instant endsAt,
+    Instant actualStartsAt,
+    Instant actualEndsAt,
     String topic,
     String room,
     boolean canceled,
+    Instant statusMarkedAt,
+    Instant statusApprovedAt,
+    Long statusApprovedBy,
     boolean archived,
     Instant createdAt
 ) {

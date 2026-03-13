@@ -3,17 +3,23 @@ package com.bntu.chinesecourses.service;
 import com.bntu.chinesecourses.exception.NotFoundException;
 import com.bntu.chinesecourses.model.dto.GroupScheduleTableResponse;
 import com.bntu.chinesecourses.model.dto.ScheduleCellResponse;
+import com.bntu.chinesecourses.model.entity.AcademicHolidayEntity;
 import com.bntu.chinesecourses.model.entity.CourseEntity;
 import com.bntu.chinesecourses.model.entity.GroupScheduleRuleEntity;
 import com.bntu.chinesecourses.model.entity.SemesterEntity;
 import com.bntu.chinesecourses.model.entity.StudyGroupEntity;
+import com.bntu.chinesecourses.repository.AcademicHolidayRepository;
 import com.bntu.chinesecourses.repository.CourseRepository;
 import com.bntu.chinesecourses.repository.GroupScheduleRuleRepository;
 import com.bntu.chinesecourses.repository.SemesterRepository;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -37,21 +43,24 @@ public class ScheduleTableService {
   private final GroupScheduleRuleRepository groupScheduleRuleRepository;
   private final SemesterRepository semesterRepository;
   private final CourseRepository courseRepository;
+  private final AcademicHolidayRepository academicHolidayRepository;
 
   public ScheduleTableService(
       GroupAccessService groupAccessService,
       GroupScheduleRuleRepository groupScheduleRuleRepository,
       SemesterRepository semesterRepository,
-      CourseRepository courseRepository
+      CourseRepository courseRepository,
+      AcademicHolidayRepository academicHolidayRepository
   ) {
     this.groupAccessService = groupAccessService;
     this.groupScheduleRuleRepository = groupScheduleRuleRepository;
     this.semesterRepository = semesterRepository;
     this.courseRepository = courseRepository;
+    this.academicHolidayRepository = academicHolidayRepository;
   }
 
   @Transactional(readOnly = true)
-  public GroupScheduleTableResponse getTable(Long groupId) {
+  public GroupScheduleTableResponse getTable(Long groupId, LocalDate weekStart) {
     StudyGroupEntity group = groupAccessService.requireVisibleGroup(groupId);
     Long semesterId = Objects.requireNonNull(group.getSemesterId(), "Group semesterId is null");
     SemesterEntity semester = semesterRepository.findById(semesterId)
@@ -69,7 +78,30 @@ public class ScheduleTableService {
     List<ScheduleCellResponse> rows = groupScheduleRuleRepository
         .findTop50ByArchivedFalseAndGroupIdOrderByDayOfWeekAscStartTimeAsc(groupId)
         .stream()
-        .map(this::toRow)
+        .map(rule -> toRow(rule, normalizeWeekStart(weekStart)))
+        .toList();
+
+    LocalDate normalizedWeekStart = normalizeWeekStart(weekStart);
+    LocalDate weekEnd = normalizedWeekStart.plusDays(6);
+    Map<LocalDate, AcademicHolidayEntity> holidaysByDate = academicHolidayRepository
+        .findByArchivedFalseAndHolidayDateBetweenOrderByHolidayDateAsc(normalizedWeekStart, weekEnd)
+        .stream()
+        .collect(Collectors.toMap(AcademicHolidayEntity::getHolidayDate, h -> h, (left, right) -> left));
+
+    List<ScheduleCellResponse> enrichedRows = rows.stream()
+        .map(row -> {
+          AcademicHolidayEntity holiday = holidaysByDate.get(row.date());
+          return new ScheduleCellResponse(
+              row.dayOfWeek(),
+              row.date(),
+              row.dayLabel(),
+              row.startTime(),
+              row.endTime(),
+              row.room(),
+              row.lessonType(),
+              holiday != null && holiday.isNoClasses(),
+              holiday == null ? null : holiday.getTitle());
+        })
         .toList();
 
     return new GroupScheduleTableResponse(
@@ -78,13 +110,14 @@ public class ScheduleTableService {
         course.getName(),
         semester.getName(),
         teacherName,
-        rows
+        normalizedWeekStart,
+        enrichedRows
     );
   }
 
   @Transactional(readOnly = true)
-  public byte[] exportXlsx(Long groupId) {
-    GroupScheduleTableResponse table = getTable(groupId);
+  public byte[] exportXlsx(Long groupId, LocalDate weekStart) {
+    GroupScheduleTableResponse table = getTable(groupId, weekStart);
     try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
       XSSFSheet sheet = workbook.createSheet("Schedule");
 
@@ -134,7 +167,7 @@ public class ScheduleTableService {
       rowNum++;
 
       Row header = sheet.createRow(rowNum++);
-      String[] headers = {"День", "Начало", "Окончание", "Аудитория/ссылка", "Тип занятия"};
+      String[] headers = {"Дата", "День", "Начало", "Окончание", "Аудитория/ссылка", "Тип занятия", "Статус дня"};
       for (int i = 0; i < headers.length; i++) {
         Cell c = header.createCell(i);
         c.setCellValue(headers[i]);
@@ -144,27 +177,35 @@ public class ScheduleTableService {
       for (ScheduleCellResponse r : table.rows()) {
         Row row = sheet.createRow(rowNum++);
         Cell c0 = row.createCell(0);
-        c0.setCellValue(r.dayLabel());
+        c0.setCellValue(r.date().toString());
         c0.setCellStyle(cellStyle);
 
         Cell c1 = row.createCell(1);
-        c1.setCellValue(r.startTime());
+        c1.setCellValue(r.dayLabel());
         c1.setCellStyle(timeStyle);
 
         Cell c2 = row.createCell(2);
-        c2.setCellValue(r.endTime());
+        c2.setCellValue(r.startTime());
         c2.setCellStyle(timeStyle);
 
         Cell c3 = row.createCell(3);
-        c3.setCellValue(r.room());
+        c3.setCellValue(r.endTime());
         c3.setCellStyle(cellStyle);
 
         Cell c4 = row.createCell(4);
-        c4.setCellValue("Практика");
+        c4.setCellValue(r.room());
         c4.setCellStyle(cellStyle);
+
+        Cell c5 = row.createCell(5);
+        c5.setCellValue(r.lessonType());
+        c5.setCellStyle(cellStyle);
+
+        Cell c6 = row.createCell(6);
+        c6.setCellValue(r.holiday() ? "Праздник: " + (r.holidayTitle() == null ? "" : r.holidayTitle()) : "Учебный день");
+        c6.setCellStyle(cellStyle);
       }
 
-      for (int i = 0; i < 5; i++) {
+      for (int i = 0; i < 7; i++) {
         sheet.autoSizeColumn(i);
       }
       workbook.write(out);
@@ -174,15 +215,20 @@ public class ScheduleTableService {
     }
   }
 
-  private ScheduleCellResponse toRow(GroupScheduleRuleEntity e) {
+  private ScheduleCellResponse toRow(GroupScheduleRuleEntity e, LocalDate weekStart) {
     int day = e.getDayOfWeek();
     String dayLabel = day >= 1 && day <= 7 ? DAY_LABELS[day] : String.valueOf(day);
+    LocalDate date = weekStart.plusDays(Math.max(day - 1, 0));
     return new ScheduleCellResponse(
         day,
+        date,
         dayLabel,
         e.getStartTime() == null ? "" : e.getStartTime().toString(),
         e.getEndTime() == null ? "" : e.getEndTime().toString(),
-        e.getRoom() == null ? "" : e.getRoom()
+        e.getRoom() == null ? "" : e.getRoom(),
+        "Практика",
+        false,
+        null
     );
   }
 
@@ -200,5 +246,13 @@ public class ScheduleTableService {
     style.setBorderBottom(BorderStyle.THIN);
     style.setBorderLeft(BorderStyle.THIN);
     style.setBorderRight(BorderStyle.THIN);
+  }
+
+  private static LocalDate normalizeWeekStart(LocalDate weekStart) {
+    LocalDate base = weekStart == null ? LocalDate.now() : weekStart;
+    while (base.getDayOfWeek() != DayOfWeek.MONDAY) {
+      base = base.minusDays(1);
+    }
+    return base;
   }
 }

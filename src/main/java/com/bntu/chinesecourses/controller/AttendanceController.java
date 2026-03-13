@@ -2,6 +2,7 @@ package com.bntu.chinesecourses.controller;
 
 import com.bntu.chinesecourses.model.dto.ArchiveRequest;
 import com.bntu.chinesecourses.model.dto.AttendanceCreateRequest;
+import com.bntu.chinesecourses.model.dto.AttendanceJournalResponse;
 import com.bntu.chinesecourses.model.dto.AttendanceResponse;
 import com.bntu.chinesecourses.model.dto.AttendanceUpdateRequest;
 import com.bntu.chinesecourses.service.AttendanceService;
@@ -9,6 +10,7 @@ import com.bntu.chinesecourses.service.CurrentUserService;
 import com.bntu.chinesecourses.service.EnrollmentService;
 import com.bntu.chinesecourses.service.LessonSessionService;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -114,5 +116,22 @@ public class AttendanceController {
   @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
   public AttendanceResponse setArchived(@PathVariable Long id, @RequestBody ArchiveRequest request) {
     return attendanceService.setArchived(id, request.archived(), currentUserService.getCurrentTeacherId().orElse(null));
+  }
+
+  @GetMapping("/journal")
+  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'GROUP')")
+  public AttendanceJournalResponse journal(
+      @RequestParam Long groupId,
+      @RequestParam LocalDate from,
+      @RequestParam LocalDate to
+  ) {
+    if (currentUserService.isGroupAccount()) {
+      Long currentGroupId = currentUserService.getCurrentGroupId()
+          .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Group id is not linked"));
+      if (!currentGroupId.equals(groupId)) {
+        throw new org.springframework.security.access.AccessDeniedException("Access only to own group attendance");
+      }
+    }
+    return attendanceService.getJournal(groupId, from, to, currentUserService.getCurrentTeacherId().orElse(null));
   }
 }

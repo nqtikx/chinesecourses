@@ -3,10 +3,12 @@ package com.bntu.chinesecourses.controller;
 import com.bntu.chinesecourses.model.dto.ArchiveRequest;
 import com.bntu.chinesecourses.model.dto.LessonSessionCreateRequest;
 import com.bntu.chinesecourses.model.dto.LessonSessionResponse;
+import com.bntu.chinesecourses.model.dto.LessonSessionStatusPatchRequest;
 import com.bntu.chinesecourses.model.dto.LessonSessionUpdateRequest;
 import com.bntu.chinesecourses.service.CurrentUserService;
 import com.bntu.chinesecourses.service.LessonSessionService;
 import jakarta.validation.Valid;
+import java.time.LocalDate;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -77,5 +79,33 @@ public class LessonSessionController {
   @PreAuthorize("hasRole('ADMIN')")
   public LessonSessionResponse setArchived(@PathVariable Long id, @RequestBody ArchiveRequest request) {
     return lessonSessionService.setArchived(id, request.archived());
+  }
+
+  @PatchMapping("/{id}/status")
+  @PreAuthorize("hasAnyRole('ADMIN','TEACHER')")
+  public LessonSessionResponse patchStatus(@PathVariable Long id, @RequestBody LessonSessionStatusPatchRequest request) {
+    Long approverUserId = currentUserService.getCurrentUserId().orElse(null);
+    return lessonSessionService.patchStatus(
+        id,
+        request,
+        approverUserId,
+        currentUserService.getCurrentTeacherId().orElse(null));
+  }
+
+  @GetMapping("/range")
+  @PreAuthorize("hasAnyRole('ADMIN','TEACHER','GROUP')")
+  public List<LessonSessionResponse> listByDateRange(
+      @RequestParam Long groupId,
+      @RequestParam LocalDate from,
+      @RequestParam LocalDate to
+  ) {
+    if (currentUserService.isGroupAccount()) {
+      Long currentGroupId = currentUserService.getCurrentGroupId()
+          .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Group id is not linked"));
+      if (!currentGroupId.equals(groupId)) {
+        throw new org.springframework.security.access.AccessDeniedException("Access only to own group sessions");
+      }
+    }
+    return lessonSessionService.findByGroupAndDateRange(groupId, from, to, currentUserService.getCurrentTeacherId().orElse(null));
   }
 }

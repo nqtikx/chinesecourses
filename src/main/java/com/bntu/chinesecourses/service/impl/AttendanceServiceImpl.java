@@ -4,19 +4,30 @@ import com.bntu.chinesecourses.exception.BadRequestException;
 import com.bntu.chinesecourses.exception.ConflictException;
 import com.bntu.chinesecourses.exception.NotFoundException;
 import com.bntu.chinesecourses.model.dto.AttendanceCreateRequest;
+import com.bntu.chinesecourses.model.dto.AttendanceJournalCellResponse;
+import com.bntu.chinesecourses.model.dto.AttendanceJournalLessonResponse;
+import com.bntu.chinesecourses.model.dto.AttendanceJournalResponse;
+import com.bntu.chinesecourses.model.dto.AttendanceJournalStudentResponse;
 import com.bntu.chinesecourses.model.dto.AttendanceResponse;
 import com.bntu.chinesecourses.model.dto.AttendanceUpdateRequest;
 import com.bntu.chinesecourses.model.entity.AttendanceEntity;
 import com.bntu.chinesecourses.model.entity.EnrollmentEntity;
 import com.bntu.chinesecourses.model.entity.LessonSessionEntity;
+import com.bntu.chinesecourses.model.entity.PersonEntity;
 import com.bntu.chinesecourses.model.entity.StudyGroupEntity;
 import com.bntu.chinesecourses.repository.AttendanceRepository;
 import com.bntu.chinesecourses.repository.EnrollmentRepository;
 import com.bntu.chinesecourses.repository.LessonSessionRepository;
+import com.bntu.chinesecourses.repository.PersonRepository;
 import com.bntu.chinesecourses.repository.StudyGroupRepository;
 import com.bntu.chinesecourses.service.AttendanceService;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,17 +38,20 @@ public class AttendanceServiceImpl implements AttendanceService {
   private final AttendanceRepository attendanceRepository;
   private final LessonSessionRepository lessonSessionRepository;
   private final EnrollmentRepository enrollmentRepository;
+  private final PersonRepository personRepository;
   private final StudyGroupRepository studyGroupRepository;
 
   public AttendanceServiceImpl(
       AttendanceRepository attendanceRepository,
       LessonSessionRepository lessonSessionRepository,
       EnrollmentRepository enrollmentRepository,
+      PersonRepository personRepository,
       StudyGroupRepository studyGroupRepository
   ) {
     this.attendanceRepository = attendanceRepository;
     this.lessonSessionRepository = lessonSessionRepository;
     this.enrollmentRepository = enrollmentRepository;
+    this.personRepository = personRepository;
     this.studyGroupRepository = studyGroupRepository;
   }
 
@@ -176,6 +190,91 @@ public class AttendanceServiceImpl implements AttendanceService {
     return attendanceRepository.findTop50ByArchivedFalseAndEnrollmentIdOrderByMarkedAtDesc(enrollmentId).stream()
         .map(AttendanceServiceImpl::toResponse)
         .toList();
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public AttendanceJournalResponse getJournal(Long groupId, LocalDate from, LocalDate to, Long teacherIdFilter) {
+    Objects.requireNonNull(groupId, "groupId is required");
+    Objects.requireNonNull(from, "from is required");
+    Objects.requireNonNull(to, "to is required");
+    if (from.isAfter(to)) {
+      throw new BadRequestException("from must be <= to");
+    }
+    if (teacherIdFilter != null) {
+      StudyGroupEntity group = studyGroupRepository.findByIdAndArchivedFalse(groupId)
+          .orElseThrow(() -> new NotFoundException("Study group not found: id=" + groupId));
+      Long groupTeacherId = group.getTeacher() == null ? null : group.getTeacher().getId();
+      if (!teacherIdFilter.equals(groupTeacherId)) {
+        throw new AccessDeniedException("Group does not belong to current teacher");
+      }
+    }
+
+    Instant fromInclusive = from.atStartOfDay().toInstant(ZoneOffset.UTC);
+    Instant toExclusive = to.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+    List<LessonSessionEntity> sessions = lessonSessionRepository
+        .findByArchivedFalseAndGroupIdAndStartsAtBetweenOrderByStartsAtAsc(groupId, fromInclusive, toExclusive);
+    List<Long> sessionIds = sessions.stream().map(LessonSessionEntity::getId).toList();
+    List<AttendanceEntity> marks = sessionIds.isEmpty()
+        ? List.of()
+        : attendanceRepository.findByArchivedFalseAndLessonSessionIdInOrderByMarkedAtDesc(sessionIds);
+    List<EnrollmentEntity> enrollments = enrollmentRepository.findTop50ByArchivedFalseAndGroupIdOrderByCreatedAtDesc(groupId)
+        .stream()
+        .filter(e -> !e.isArchived())
+        .toList();
+    Map<Long, PersonEntity> studentsById = new HashMap<>();
+    List<Long> studentIds = enrollments.stream().map(EnrollmentEntity::getStudentId).distinct().toList();
+    for (PersonEntity person : personRepository.findAllById(studentIds)) {
+      studentsById.put(person.getId(), person);
+    }
+
+    List<AttendanceJournalLessonResponse> lessons = sessions.stream()
+        .map(s -> {
+          Instant dateTime = s.getActualStartsAt() != null ? s.getActualStartsAt() : s.getStartsAt();
+          return new AttendanceJournalLessonResponse(
+              s.getId(),
+              dateTime.atZone(ZoneOffset.UTC).toLocalDate(),
+              s.getTopic(),
+              s.isCanceled());
+        })
+        .toList();
+
+    Map<String, AttendanceEntity> markByEnrollmentAndLesson = new HashMap<>();
+    for (AttendanceEntity mark : marks) {
+      String key = mark.getEnrollment().getId() + ":" + mark.getLessonSession().getId();
+      markByEnrollmentAndLesson.putIfAbsent(key, mark);
+    }
+
+    List<AttendanceJournalStudentResponse> students = enrollments.stream()
+        .map(enrollment -> {
+          PersonEntity person = studentsById.get(enrollment.getStudentId());
+          String fullName = person == null
+              ? "ID " + enrollment.getStudentId()
+              : String.join(" ", List.of(
+                  person.getLastName(),
+                  person.getFirstName(),
+                  person.getMiddleName() == null ? "" : person.getMiddleName())
+                  .stream()
+                  .filter(v -> !v.isBlank())
+                  .toList());
+          List<AttendanceJournalCellResponse> cells = lessons.stream()
+              .map(lesson -> {
+                AttendanceEntity mark = markByEnrollmentAndLesson.get(enrollment.getId() + ":" + lesson.lessonSessionId());
+                if (mark == null) {
+                  return new AttendanceJournalCellResponse(lesson.lessonSessionId(), null, null, null);
+                }
+                return new AttendanceJournalCellResponse(
+                    lesson.lessonSessionId(),
+                    mark.getStatus(),
+                    mark.getComment(),
+                    mark.getMarkedAt());
+              })
+              .toList();
+          return new AttendanceJournalStudentResponse(enrollment.getId(), enrollment.getStudentId(), fullName, cells);
+        })
+        .toList();
+
+    return new AttendanceJournalResponse(groupId, from, to, lessons, students);
   }
 
   @Override
