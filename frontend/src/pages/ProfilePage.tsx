@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { adminEnrollmentsApi, adminUsersApi, contractsApi, coursesApi, profileApi, semestersApi, studyGroupsApi } from '../api';
-import type { AdminUserListItemResponse, ContractDocumentResponse, CourseResponse, SemesterResponse, StudyGroupResponse, UserProfileResponse } from '../types';
+import type { AdminUserListItemResponse, ContractDocumentResponse, CourseResponse, PersonGuardianResponse, SemesterResponse, StudyGroupResponse, UserProfileResponse } from '../types';
 import { useAuth } from '../context/AuthContext';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
@@ -37,7 +37,15 @@ export default function ProfilePage() {
     birthDate: '',
     email: '',
     phone: '',
+    residentialAddress: '',
+    documentType: '',
+    documentSeries: '',
+    documentNumber: '',
+    documentIssueDate: '',
+    documentIssuedBy: '',
+    documentIdentificationNumber: '',
   });
+  const [guardians, setGuardians] = useState<PersonGuardianResponse[]>([]);
 
   const loadMe = async () => {
     setLoading(true);
@@ -51,7 +59,15 @@ export default function ProfilePage() {
         birthDate: '',
         email: data.email || '',
         phone: data.phone || '',
+        residentialAddress: data.residentialAddress || '',
+        documentType: data.documentType || '',
+        documentSeries: data.documentSeries || '',
+        documentNumber: data.documentNumber || '',
+        documentIssueDate: data.documentIssueDate || '',
+        documentIssuedBy: data.documentIssuedBy || '',
+        documentIdentificationNumber: data.documentIdentificationNumber || '',
       });
+      setGuardians(data.guardians || []);
       const contractsRes = await contractsApi.my();
       setContracts(contractsRes.data);
     } catch {
@@ -100,7 +116,15 @@ export default function ProfilePage() {
         birthDate: '',
         email: data.email || '',
         phone: data.phone || '',
+        residentialAddress: data.residentialAddress || '',
+        documentType: data.documentType || '',
+        documentSeries: data.documentSeries || '',
+        documentNumber: data.documentNumber || '',
+        documentIssueDate: data.documentIssueDate || '',
+        documentIssuedBy: data.documentIssuedBy || '',
+        documentIdentificationNumber: data.documentIdentificationNumber || '',
       });
+      setGuardians(data.guardians || []);
       if (isAdmin && data.currentCourse?.groupId) {
         const contractsRes = await contractsApi.byGroup(data.currentCourse.groupId);
         setContracts(contractsRes.data.filter(c => c.userId === data.userId));
@@ -157,6 +181,21 @@ export default function ProfilePage() {
         email: editForm.email,
         phone: editForm.phone,
         birthDate: editForm.birthDate || undefined,
+        residentialAddress: editForm.residentialAddress || undefined,
+        documentType: editForm.documentType || undefined,
+        documentSeries: editForm.documentSeries || undefined,
+        documentNumber: editForm.documentNumber || undefined,
+        documentIssueDate: editForm.documentIssueDate || undefined,
+        documentIssuedBy: editForm.documentIssuedBy || undefined,
+        documentIdentificationNumber: editForm.documentIdentificationNumber || undefined,
+        guardians: guardians.map((g, idx) => ({
+          id: g.id,
+          fullName: g.fullName,
+          phone: g.phone || undefined,
+          relationType: g.relationType || undefined,
+          primaryGuardian: idx === 0 ? true : g.primaryGuardian,
+          archived: g.archived,
+        })),
       });
       toast('success', 'Профиль обновлён');
       if (profile) {
@@ -233,6 +272,11 @@ export default function ProfilePage() {
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">{profile.fullName ?? profile.username}</h2>
                 <p className="text-sm text-gray-500">{profile.email ?? 'Без email'} {profile.phone ? `| ${profile.phone}` : ''}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Преподаватель: {profile.teacherFullName ?? '—'}
+                  {profile.teacherPhone ? ` | ${profile.teacherPhone}` : ''}
+                  {profile.teacherEmail ? ` | ${profile.teacherEmail}` : ''}
+                </p>
               </div>
               <Badge variant={profile.role === 'ROLE_ADMIN' ? 'red' : profile.role === 'ROLE_TEACHER' ? 'blue' : 'green'}>
                 {profile.role}
@@ -251,6 +295,41 @@ export default function ProfilePage() {
               <input type="date" value={editForm.birthDate} onChange={(e) => setEditForm({ ...editForm, birthDate: e.target.value })} className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
               <input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="Email" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
               <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} placeholder="Телефон" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input value={editForm.residentialAddress} onChange={(e) => setEditForm({ ...editForm, residentialAddress: e.target.value })} placeholder="Адрес проживания" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+              <input value={editForm.documentType} onChange={(e) => setEditForm({ ...editForm, documentType: e.target.value })} placeholder="Документ: вид" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+              <input value={editForm.documentSeries} onChange={(e) => setEditForm({ ...editForm, documentSeries: e.target.value })} placeholder="Серия" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+              <input value={editForm.documentNumber} onChange={(e) => setEditForm({ ...editForm, documentNumber: e.target.value })} placeholder="Номер" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+              <input type="date" value={editForm.documentIssueDate} onChange={(e) => setEditForm({ ...editForm, documentIssueDate: e.target.value })} className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+              <input value={editForm.documentIdentificationNumber} onChange={(e) => setEditForm({ ...editForm, documentIdentificationNumber: e.target.value })} placeholder="Идентификационный номер" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+              <input value={editForm.documentIssuedBy} onChange={(e) => setEditForm({ ...editForm, documentIssuedBy: e.target.value })} placeholder="Кем выдан" className="px-3 py-2 rounded-lg border border-gray-300 text-sm md:col-span-2" />
+            </div>
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-gray-500">Родители/законные представители (для детей)</div>
+              {guardians.map((g, idx) => (
+                <div key={g.id ?? idx} className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                  <input value={g.fullName} onChange={(e) => setGuardians(guardians.map((x, i) => i === idx ? { ...x, fullName: e.target.value } : x))} placeholder="ФИО" className="px-3 py-2 rounded-lg border border-gray-300 text-sm md:col-span-2" />
+                  <input value={g.phone ?? ''} onChange={(e) => setGuardians(guardians.map((x, i) => i === idx ? { ...x, phone: e.target.value } : x))} placeholder="Телефон" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+                  <input value={g.relationType ?? ''} onChange={(e) => setGuardians(guardians.map((x, i) => i === idx ? { ...x, relationType: e.target.value } : x))} placeholder="Связь (мать/отец)" className="px-3 py-2 rounded-lg border border-gray-300 text-sm" />
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setGuardians([...guardians, {
+                  id: 0,
+                  childPersonId: profile.personId ?? 0,
+                  fullName: '',
+                  phone: '',
+                  relationType: '',
+                  primaryGuardian: guardians.length === 0,
+                  archived: false,
+                  createdAt: new Date().toISOString(),
+                }])}
+                className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs text-gray-700"
+              >
+                Добавить представителя
+              </button>
             </div>
             <button onClick={saveMyProfile} disabled={savingProfile} className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium disabled:opacity-50">
               <Save className="w-4 h-4" /> {savingProfile ? 'Сохранение...' : 'Сохранить'}

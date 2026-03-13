@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { attendanceApi, classProfilesApi, lessonSessionsApi, studyGroupsApi, semestersApi, coursesApi, enrollmentsApi, personsApi } from '../api';
-import type { AttendanceResponse, AttendanceStatus, LessonSessionResponse, StudyGroupResponse, SemesterResponse, CourseResponse, EnrollmentResponse } from '../types';
+import type { AttendanceJournalResponse, AttendanceResponse, AttendanceStatus, LessonSessionResponse, StudyGroupResponse, SemesterResponse, CourseResponse, EnrollmentResponse } from '../types';
 import { useAuth } from '../context/AuthContext';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
@@ -38,6 +38,7 @@ export default function AttendancePage() {
   const [selectedSession, setSelectedSession] = useState<number | null>(null);
 
   const [students, setStudents] = useState<StudentRow[]>([]);
+  const [journal, setJournal] = useState<AttendanceJournalResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState<number | null>(null);
 
@@ -124,6 +125,17 @@ export default function AttendancePage() {
       }));
       rows.sort((a, b) => a.studentName.localeCompare(b.studentName));
       setStudents(rows);
+
+      const session = sessions.find((s) => s.id === selectedSession);
+      const baseDate = session ? new Date(session.startsAt) : new Date();
+      const from = new Date(baseDate);
+      from.setDate(baseDate.getDate() - ((baseDate.getDay() + 6) % 7));
+      const to = new Date(from);
+      to.setDate(from.getDate() + 6);
+      const fromStr = from.toISOString().slice(0, 10);
+      const toStr = to.toISOString().slice(0, 10);
+      const journalRes = await attendanceApi.journal(selectedGroup, fromStr, toStr);
+      setJournal(journalRes.data);
     } catch { toast('error', 'Ошибка загрузки'); }
     setLoading(false);
   };
@@ -279,6 +291,38 @@ export default function AttendancePage() {
           </div>
         )}
       </div>
+
+      {journal && journal.lessons.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 overflow-x-auto">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">
+            Журнал по дням занятий ({new Date(journal.fromDate).toLocaleDateString('ru')} - {new Date(journal.toDate).toLocaleDateString('ru')})
+          </h3>
+          <table className="min-w-full text-xs border border-gray-200">
+            <thead className="bg-gray-50">
+            <tr>
+              <th className="px-2 py-2 border text-left">Ученик</th>
+              {journal.lessons.map((l) => (
+                <th key={l.lessonSessionId} className="px-2 py-2 border">
+                  {new Date(l.lessonDate).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })}
+                </th>
+              ))}
+            </tr>
+            </thead>
+            <tbody>
+            {journal.students.map((s) => (
+              <tr key={s.enrollmentId}>
+                <td className="px-2 py-2 border font-medium">{s.studentFullName}</td>
+                {s.attendance.map((c) => (
+                  <td key={`${s.enrollmentId}-${c.lessonSessionId}`} className="px-2 py-2 border text-center">
+                    {c.status === 'PRESENT' ? 'П' : c.status === 'ABSENT' ? 'Н' : c.status === 'LATE' ? 'О' : c.status === 'EXCUSED' ? 'У' : '—'}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

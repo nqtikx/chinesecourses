@@ -47,6 +47,25 @@ export interface PersonResponse {
   birthDate: string | null;
   phone: string | null;
   email: string | null;
+  residentialAddress: string | null;
+  documentType: string | null;
+  documentSeries: string | null;
+  documentNumber: string | null;
+  documentIssueDate: string | null;
+  documentIssuedBy: string | null;
+  documentIdentificationNumber: string | null;
+  guardians: PersonGuardianResponse[];
+  archived: boolean;
+  createdAt: string;
+}
+
+export interface PersonGuardianResponse {
+  id: number;
+  childPersonId: number;
+  fullName: string;
+  phone: string | null;
+  relationType: string | null;
+  primaryGuardian: boolean;
   archived: boolean;
   createdAt: string;
 }
@@ -54,6 +73,9 @@ export interface PersonResponse {
 export interface TeacherResponse {
   id: number;
   personId: number;
+  fullName: string | null;
+  phone: string | null;
+  email: string | null;
   archived: boolean;
   createdAt: string;
 }
@@ -93,6 +115,17 @@ export interface UserProfileResponse {
   fullName: string | null;
   email: string | null;
   phone: string | null;
+  residentialAddress: string | null;
+  documentType: string | null;
+  documentSeries: string | null;
+  documentNumber: string | null;
+  documentIssueDate: string | null;
+  documentIssuedBy: string | null;
+  documentIdentificationNumber: string | null;
+  guardians: PersonGuardianResponse[];
+  teacherFullName: string | null;
+  teacherPhone: string | null;
+  teacherEmail: string | null;
   currentCourse: ProfileCourseItemResponse | null;
   completedCourses: ProfileCourseItemResponse[];
 }
@@ -148,10 +181,14 @@ export interface ClassProfileResponse {
 
 export interface ScheduleCellResponse {
   dayOfWeek: number;
+  date: string;
   dayLabel: string;
   startTime: string;
   endTime: string;
   room: string;
+  lessonType: string;
+  holiday: boolean;
+  holidayTitle: string | null;
 }
 
 export interface GroupScheduleTableResponse {
@@ -160,6 +197,7 @@ export interface GroupScheduleTableResponse {
   courseName: string;
   semesterName: string;
   teacherName: string;
+  weekStart: string;
   rows: ScheduleCellResponse[];
 }
 
@@ -182,9 +220,14 @@ export interface LessonSessionResponse {
   teacherId: number | null;
   startsAt: string;
   endsAt: string;
+  actualStartsAt: string | null;
+  actualEndsAt: string | null;
   topic: string | null;
   room: string | null;
   canceled: boolean;
+  statusMarkedAt: string | null;
+  statusApprovedAt: string | null;
+  statusApprovedBy: number | null;
   archived: boolean;
   createdAt: string;
 }
@@ -260,6 +303,14 @@ export interface PersonCreateRequest {
   birthDate?: string;
   phone?: string;
   email?: string;
+  residentialAddress?: string;
+  documentType?: string;
+  documentSeries?: string;
+  documentNumber?: string;
+  documentIssueDate?: string;
+  documentIssuedBy?: string;
+  documentIdentificationNumber?: string;
+  guardians?: PersonGuardianUpdateRequest[];
 }
 
 export interface PersonUpdateRequest {
@@ -269,6 +320,23 @@ export interface PersonUpdateRequest {
   birthDate?: string;
   phone?: string;
   email?: string;
+  residentialAddress?: string;
+  documentType?: string;
+  documentSeries?: string;
+  documentNumber?: string;
+  documentIssueDate?: string;
+  documentIssuedBy?: string;
+  documentIdentificationNumber?: string;
+  guardians?: PersonGuardianUpdateRequest[];
+  archived: boolean;
+}
+
+export interface PersonGuardianUpdateRequest {
+  id?: number;
+  fullName: string;
+  phone?: string;
+  relationType?: string;
+  primaryGuardian: boolean;
   archived: boolean;
 }
 
@@ -298,6 +366,8 @@ export interface LessonSessionCreateRequest {
   teacherId?: number;
   startsAt: string;
   endsAt: string;
+  actualStartsAt?: string;
+  actualEndsAt?: string;
   topic?: string;
   room?: string;
 }
@@ -307,9 +377,68 @@ export interface LessonSessionUpdateRequest {
   teacherId?: number;
   startsAt: string;
   endsAt: string;
+  actualStartsAt?: string;
+  actualEndsAt?: string;
   topic?: string;
   room?: string;
   canceled: boolean;
+  archived: boolean;
+}
+
+export interface LessonSessionStatusPatchRequest {
+  canceled: boolean;
+  actualStartsAt?: string;
+  actualEndsAt?: string;
+}
+
+export interface AttendanceJournalCellResponse {
+  lessonSessionId: number;
+  status: AttendanceStatus | null;
+  comment: string | null;
+  markedAt: string | null;
+}
+
+export interface AttendanceJournalLessonResponse {
+  lessonSessionId: number;
+  lessonDate: string;
+  topic: string | null;
+  canceled: boolean;
+}
+
+export interface AttendanceJournalStudentResponse {
+  enrollmentId: number;
+  studentId: number;
+  studentFullName: string;
+  attendance: AttendanceJournalCellResponse[];
+}
+
+export interface AttendanceJournalResponse {
+  groupId: number;
+  fromDate: string;
+  toDate: string;
+  lessons: AttendanceJournalLessonResponse[];
+  students: AttendanceJournalStudentResponse[];
+}
+
+export interface AcademicHolidayResponse {
+  id: number;
+  holidayDate: string;
+  title: string;
+  noClasses: boolean;
+  archived: boolean;
+  createdAt: string;
+}
+
+export interface AcademicHolidayCreateRequest {
+  holidayDate: string;
+  title: string;
+  noClasses: boolean;
+}
+
+export interface AcademicHolidayUpdateRequest {
+  holidayDate: string;
+  title: string;
+  noClasses: boolean;
   archived: boolean;
 }
 

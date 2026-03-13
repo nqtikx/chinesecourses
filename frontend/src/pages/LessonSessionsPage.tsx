@@ -9,7 +9,8 @@ import { toast } from '../components/ui/Toast';
 import { Plus, Pencil, Archive, ArchiveRestore, Clock, CalendarDays, MapPin, GraduationCap, XCircle, CheckCircle } from 'lucide-react';
 
 export default function LessonSessionsPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isTeacher } = useAuth();
+  const canManageStatus = isAdmin || isTeacher;
   const [courses, setCourses] = useState<CourseResponse[]>([]);
   const [semesters, setSemesters] = useState<SemesterResponse[]>([]);
   const [groups, setGroups] = useState<StudyGroupResponse[]>([]);
@@ -20,7 +21,9 @@ export default function LessonSessionsPage() {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<LessonSessionResponse | null>(null);
-  const [form, setForm] = useState({ groupId: 0, teacherId: '', startsAt: '', endsAt: '', topic: '', room: '' });
+  const [form, setForm] = useState({
+    groupId: 0, teacherId: '', startsAt: '', endsAt: '', actualStartsAt: '', actualEndsAt: '', topic: '', room: '',
+  });
   const [teacherNames, setTeacherNames] = useState<Record<number, string>>({});
 
   useEffect(() => { coursesApi.list().then(({ data }) => { setCourses(data); if (data.length) setSelectedCourse(data[0].id); }); }, []);
@@ -81,7 +84,7 @@ export default function LessonSessionsPage() {
     setForm({
       groupId: selectedGroup || 0,
       teacherId: g?.teacherId?.toString() || '',
-      startsAt: '', endsAt: '', topic: '', room: '',
+      startsAt: '', endsAt: '', actualStartsAt: '', actualEndsAt: '', topic: '', room: '',
     });
     setModalOpen(true);
   };
@@ -93,6 +96,8 @@ export default function LessonSessionsPage() {
       teacherId: s.teacherId?.toString() || '',
       startsAt: s.startsAt.slice(0, 16),
       endsAt: s.endsAt.slice(0, 16),
+      actualStartsAt: s.actualStartsAt ? s.actualStartsAt.slice(0, 16) : '',
+      actualEndsAt: s.actualEndsAt ? s.actualEndsAt.slice(0, 16) : '',
       topic: s.topic || '',
       room: s.room || '',
     });
@@ -107,6 +112,8 @@ export default function LessonSessionsPage() {
         teacherId: form.teacherId ? Number(form.teacherId) : undefined,
         startsAt: new Date(form.startsAt).toISOString(),
         endsAt: new Date(form.endsAt).toISOString(),
+        actualStartsAt: form.actualStartsAt ? new Date(form.actualStartsAt).toISOString() : undefined,
+        actualEndsAt: form.actualEndsAt ? new Date(form.actualEndsAt).toISOString() : undefined,
         topic: form.topic || undefined,
         room: form.room || undefined,
       };
@@ -132,11 +139,10 @@ export default function LessonSessionsPage() {
 
   const toggleCancel = async (s: LessonSessionResponse) => {
     try {
-      await lessonSessionsApi.update(s.id, {
-        groupId: s.groupId, teacherId: s.teacherId ?? undefined,
-        startsAt: s.startsAt, endsAt: s.endsAt,
-        topic: s.topic ?? undefined, room: s.room ?? undefined,
-        canceled: !s.canceled, archived: s.archived,
+      await lessonSessionsApi.patchStatus(s.id, {
+        canceled: !s.canceled,
+        actualStartsAt: s.actualStartsAt ?? undefined,
+        actualEndsAt: s.actualEndsAt ?? undefined,
       });
       toast('success', s.canceled ? 'Занятие возобновлено' : 'Занятие отменено');
       reload();
@@ -235,19 +241,28 @@ export default function LessonSessionsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         {s.canceled ? <Badge variant="red">Отменено</Badge> : s.archived ? <Badge variant="gray">Архив</Badge> : <Badge variant="green">Активно</Badge>}
-                        {isAdmin && (
+                        {canManageStatus && (
                           <div className="flex items-center gap-1 ml-2">
-                            <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title="Редактировать"><Pencil className="w-4 h-4" /></button>
+                            {isAdmin && (
+                              <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title="Редактировать"><Pencil className="w-4 h-4" /></button>
+                            )}
                             <button onClick={() => toggleCancel(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title={s.canceled ? 'Возобновить' : 'Отменить'}>
                               {s.canceled ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <XCircle className="w-4 h-4 text-red-400" />}
                             </button>
-                            <button onClick={() => toggleArchive(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title={s.archived ? 'Восстановить' : 'Архивировать'}>
-                              {s.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
-                            </button>
+                            {isAdmin && (
+                              <button onClick={() => toggleArchive(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title={s.archived ? 'Восстановить' : 'Архивировать'}>
+                                {s.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
                     </div>
+                    {s.actualStartsAt && s.actualEndsAt && (
+                      <div className="mt-2 text-xs text-gray-500">
+                        Факт: {fmtDate(s.actualStartsAt)} {fmtTime(s.actualStartsAt)}-{fmtTime(s.actualEndsAt)}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -282,6 +297,16 @@ export default function LessonSessionsPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Конец *</label>
               <input type="datetime-local" value={form.endsAt} onChange={(e) => setForm({ ...form, endsAt: e.target.value })} required className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Фактическое начало</label>
+              <input type="datetime-local" value={form.actualStartsAt} onChange={(e) => setForm({ ...form, actualStartsAt: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Фактический конец</label>
+              <input type="datetime-local" value={form.actualEndsAt} onChange={(e) => setForm({ ...form, actualEndsAt: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">

@@ -15,7 +15,11 @@ export default function PersonsPage() {
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<PersonResponse | null>(null);
-  const [form, setForm] = useState({ lastName: '', firstName: '', middleName: '', birthDate: '', phone: '', email: '' });
+  const [form, setForm] = useState({
+    lastName: '', firstName: '', middleName: '', birthDate: '', phone: '', email: '',
+    residentialAddress: '', documentType: '', documentSeries: '', documentNumber: '', documentIssueDate: '',
+    documentIssuedBy: '', documentIdentificationNumber: '', guardianFullName: '', guardianPhone: '', guardianRelation: '',
+  });
   const [archiveTarget, setArchiveTarget] = useState<PersonResponse | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
@@ -26,17 +30,64 @@ export default function PersonsPage() {
     try { const { data } = await personsApi.search(searchPrefix.trim()); setPersons(data); } catch { toast('error', 'Ошибка поиска'); } finally { setLoading(false); }
   };
 
-  const openCreate = () => { setEditing(null); setForm({ lastName: '', firstName: '', middleName: '', birthDate: '', phone: '', email: '' }); setModalOpen(true); };
+  const openCreate = () => {
+    setEditing(null);
+    setForm({
+      lastName: '', firstName: '', middleName: '', birthDate: '', phone: '', email: '',
+      residentialAddress: '', documentType: '', documentSeries: '', documentNumber: '', documentIssueDate: '',
+      documentIssuedBy: '', documentIdentificationNumber: '', guardianFullName: '', guardianPhone: '', guardianRelation: '',
+    });
+    setModalOpen(true);
+  };
 
   const openEdit = (p: PersonResponse) => {
     setEditing(p);
-    setForm({ lastName: p.lastName, firstName: p.firstName, middleName: p.middleName || '', birthDate: p.birthDate || '', phone: p.phone || '', email: p.email || '' });
+    const primaryGuardian = p.guardians?.find(g => g.primaryGuardian) || p.guardians?.[0];
+    setForm({
+      lastName: p.lastName,
+      firstName: p.firstName,
+      middleName: p.middleName || '',
+      birthDate: p.birthDate || '',
+      phone: p.phone || '',
+      email: p.email || '',
+      residentialAddress: p.residentialAddress || '',
+      documentType: p.documentType || '',
+      documentSeries: p.documentSeries || '',
+      documentNumber: p.documentNumber || '',
+      documentIssueDate: p.documentIssueDate || '',
+      documentIssuedBy: p.documentIssuedBy || '',
+      documentIdentificationNumber: p.documentIdentificationNumber || '',
+      guardianFullName: primaryGuardian?.fullName || '',
+      guardianPhone: primaryGuardian?.phone || '',
+      guardianRelation: primaryGuardian?.relationType || '',
+    });
     setModalOpen(true);
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const payload = { lastName: form.lastName, firstName: form.firstName, middleName: form.middleName || undefined, birthDate: form.birthDate || undefined, phone: form.phone || undefined, email: form.email || undefined };
+    const payload = {
+      lastName: form.lastName,
+      firstName: form.firstName,
+      middleName: form.middleName || undefined,
+      birthDate: form.birthDate || undefined,
+      phone: form.phone || undefined,
+      email: form.email || undefined,
+      residentialAddress: form.residentialAddress || undefined,
+      documentType: form.documentType || undefined,
+      documentSeries: form.documentSeries || undefined,
+      documentNumber: form.documentNumber || undefined,
+      documentIssueDate: form.documentIssueDate || undefined,
+      documentIssuedBy: form.documentIssuedBy || undefined,
+      documentIdentificationNumber: form.documentIdentificationNumber || undefined,
+      guardians: form.guardianFullName ? [{
+        fullName: form.guardianFullName,
+        phone: form.guardianPhone || undefined,
+        relationType: form.guardianRelation || undefined,
+        primaryGuardian: true,
+        archived: false,
+      }] : [],
+    };
     try {
       if (editing) { await personsApi.update(editing.id, { ...payload, archived: editing.archived }); toast('success', 'Данные обновлены'); }
       else { await personsApi.create(payload); toast('success', 'Персона добавлена'); }
@@ -117,6 +168,9 @@ export default function PersonsPage() {
                     <Mail className="w-3.5 h-3.5 text-gray-400" /> {p.email}
                   </div>
                 )}
+                {p.residentialAddress && (
+                  <div className="text-sm text-gray-600">Адрес: {p.residentialAddress}</div>
+                )}
                 <div className="flex items-center justify-between pt-2">
                   <span className="text-xs text-gray-400">ID: {p.id}</span>
                   <div className="flex items-center gap-1">
@@ -179,6 +233,20 @@ export default function PersonsPage() {
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Дата рождения</label><input type="date" value={form.birthDate} onChange={(e) => setForm({ ...form, birthDate: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" /></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Телефон</label><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" placeholder="+375..." /></div>
             <div><label className="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Адрес проживания</label><input value={form.residentialAddress} onChange={(e) => setForm({ ...form, residentialAddress: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Вид документа</label><input value={form.documentType} onChange={(e) => setForm({ ...form, documentType: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Серия</label><input value={form.documentSeries} onChange={(e) => setForm({ ...form, documentSeries: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Номер</label><input value={form.documentNumber} onChange={(e) => setForm({ ...form, documentNumber: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Дата выдачи</label><input type="date" value={form.documentIssueDate} onChange={(e) => setForm({ ...form, documentIssueDate: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Идентификационный номер</label><input value={form.documentIdentificationNumber} onChange={(e) => setForm({ ...form, documentIdentificationNumber: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" /></div>
+            <div className="col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">Кем выдан</label><input value={form.documentIssuedBy} onChange={(e) => setForm({ ...form, documentIssuedBy: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" /></div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">ФИО родителя</label><input value={form.guardianFullName} onChange={(e) => setForm({ ...form, guardianFullName: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Телефон родителя</label><input value={form.guardianPhone} onChange={(e) => setForm({ ...form, guardianPhone: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" /></div>
+            <div><label className="block text-sm font-medium text-gray-700 mb-1">Кто это</label><input value={form.guardianRelation} onChange={(e) => setForm({ ...form, guardianRelation: e.target.value })} placeholder="мать/отец" className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" /></div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">Отмена</button>
