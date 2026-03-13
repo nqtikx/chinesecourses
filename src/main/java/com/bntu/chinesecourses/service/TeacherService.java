@@ -67,9 +67,23 @@ public class TeacherService {
   }
 
   private TeacherResponse toResponse(TeacherEntity teacher) {
+    PersonEntity person = teacher.getPerson();
+    String fullName = person == null
+        ? null
+        : String.join(" ",
+            java.util.List.of(
+                person.getLastName(),
+                person.getFirstName(),
+                person.getMiddleName() == null ? "" : person.getMiddleName())
+                .stream()
+                .filter(s -> s != null && !s.isBlank())
+                .toList());
     return new TeacherResponse(
         teacher.getId(),
         teacher.getPerson().getId(),
+        fullName,
+        person == null ? null : person.getPhone(),
+        person == null ? null : person.getEmail(),
         teacher.isArchived(),
         teacher.getCreatedAt()
     );

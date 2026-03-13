@@ -35,6 +35,27 @@ public class PersonEntity {
   @Column(name = "email", length = 256)
   private String email;
 
+  @Column(name = "residential_address", length = 512)
+  private String residentialAddress;
+
+  @Column(name = "document_type", length = 128)
+  private String documentType;
+
+  @Column(name = "document_series", length = 64)
+  private String documentSeries;
+
+  @Column(name = "document_number", length = 64)
+  private String documentNumber;
+
+  @Column(name = "document_issue_date")
+  private LocalDate documentIssueDate;
+
+  @Column(name = "document_issued_by", length = 512)
+  private String documentIssuedBy;
+
+  @Column(name = "document_identification_number", length = 128)
+  private String documentIdentificationNumber;
+
   @Column(name = "archived", nullable = false)
   private boolean archived;
 
@@ -52,6 +73,13 @@ public class PersonEntity {
       LocalDate birthDate,
       String phone,
       String email,
+      String residentialAddress,
+      String documentType,
+      String documentSeries,
+      String documentNumber,
+      LocalDate documentIssueDate,
+      String documentIssuedBy,
+      String documentIdentificationNumber,
       boolean archived,
       Instant createdAt
   ) {
@@ -62,6 +90,13 @@ public class PersonEntity {
     this.birthDate = birthDate;
     this.phone = phone;
     this.email = email;
+    this.residentialAddress = residentialAddress;
+    this.documentType = documentType;
+    this.documentSeries = documentSeries;
+    this.documentNumber = documentNumber;
+    this.documentIssueDate = documentIssueDate;
+    this.documentIssuedBy = documentIssuedBy;
+    this.documentIdentificationNumber = documentIdentificationNumber;
     this.archived = archived;
     this.createdAt = createdAt;
   }
@@ -94,6 +129,34 @@ public class PersonEntity {
     return email;
   }
 
+  public String getResidentialAddress() {
+    return residentialAddress;
+  }
+
+  public String getDocumentType() {
+    return documentType;
+  }
+
+  public String getDocumentSeries() {
+    return documentSeries;
+  }
+
+  public String getDocumentNumber() {
+    return documentNumber;
+  }
+
+  public LocalDate getDocumentIssueDate() {
+    return documentIssueDate;
+  }
+
+  public String getDocumentIssuedBy() {
+    return documentIssuedBy;
+  }
+
+  public String getDocumentIdentificationNumber() {
+    return documentIdentificationNumber;
+  }
+
   public boolean isArchived() {
     return archived;
   }
@@ -124,6 +187,34 @@ public class PersonEntity {
 
   public void setEmail(String email) {
     this.email = email;
+  }
+
+  public void setResidentialAddress(String residentialAddress) {
+    this.residentialAddress = residentialAddress;
+  }
+
+  public void setDocumentType(String documentType) {
+    this.documentType = documentType;
+  }
+
+  public void setDocumentSeries(String documentSeries) {
+    this.documentSeries = documentSeries;
+  }
+
+  public void setDocumentNumber(String documentNumber) {
+    this.documentNumber = documentNumber;
+  }
+
+  public void setDocumentIssueDate(LocalDate documentIssueDate) {
+    this.documentIssueDate = documentIssueDate;
+  }
+
+  public void setDocumentIssuedBy(String documentIssuedBy) {
+    this.documentIssuedBy = documentIssuedBy;
+  }
+
+  public void setDocumentIdentificationNumber(String documentIdentificationNumber) {
+    this.documentIdentificationNumber = documentIdentificationNumber;
   }
 
   public void setArchived(boolean archived) {

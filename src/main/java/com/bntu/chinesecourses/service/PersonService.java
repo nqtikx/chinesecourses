@@ -3,12 +3,16 @@ package com.bntu.chinesecourses.service;
 import com.bntu.chinesecourses.exception.ConflictException;
 import com.bntu.chinesecourses.exception.NotFoundException;
 import com.bntu.chinesecourses.model.dto.PersonCreateRequest;
+import com.bntu.chinesecourses.model.dto.PersonGuardianResponse;
+import com.bntu.chinesecourses.model.dto.PersonGuardianUpdateRequest;
 import com.bntu.chinesecourses.model.dto.PersonResponse;
 import com.bntu.chinesecourses.model.dto.PersonUpdateRequest;
 import com.bntu.chinesecourses.model.entity.PersonEntity;
+import com.bntu.chinesecourses.model.entity.PersonGuardianEntity;
 import com.bntu.chinesecourses.model.entity.StudyGroupEntity;
 import com.bntu.chinesecourses.repository.EnrollmentRepository;
 import com.bntu.chinesecourses.repository.PersonRepository;
+import com.bntu.chinesecourses.repository.PersonGuardianRepository;
 import com.bntu.chinesecourses.repository.StudyGroupRepository;
 import java.time.Instant;
 import java.util.List;
@@ -20,15 +24,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class PersonService {
 
   private final PersonRepository personRepository;
+  private final PersonGuardianRepository personGuardianRepository;
   private final StudyGroupRepository studyGroupRepository;
   private final EnrollmentRepository enrollmentRepository;
 
   public PersonService(
       PersonRepository personRepository,
+      PersonGuardianRepository personGuardianRepository,
       StudyGroupRepository studyGroupRepository,
       EnrollmentRepository enrollmentRepository
   ) {
     this.personRepository = personRepository;
+    this.personGuardianRepository = personGuardianRepository;
     this.studyGroupRepository = studyGroupRepository;
     this.enrollmentRepository = enrollmentRepository;
   }
@@ -54,12 +61,20 @@ public class PersonService {
         request.birthDate(),
         phone,
         email,
+        normalizeText(request.residentialAddress()),
+        normalizeText(request.documentType()),
+        normalizeText(request.documentSeries()),
+        normalizeText(request.documentNumber()),
+        request.documentIssueDate(),
+        normalizeText(request.documentIssuedBy()),
+        normalizeText(request.documentIdentificationNumber()),
         false,
         Instant.now()
     );
 
     PersonEntity saved = personRepository.save(entity);
-    return toResponse(saved);
+    replaceGuardians(saved.getId(), request.guardians());
+    return toResponse(saved, loadGuardians(saved.getId()));
   }
 
   @Transactional
@@ -83,8 +98,16 @@ public class PersonService {
     entity.setBirthDate(request.birthDate());
     entity.setPhone(phone);
     entity.setEmail(email);
+    entity.setResidentialAddress(normalizeText(request.residentialAddress()));
+    entity.setDocumentType(normalizeText(request.documentType()));
+    entity.setDocumentSeries(normalizeText(request.documentSeries()));
+    entity.setDocumentNumber(normalizeText(request.documentNumber()));
+    entity.setDocumentIssueDate(request.documentIssueDate());
+    entity.setDocumentIssuedBy(normalizeText(request.documentIssuedBy()));
+    entity.setDocumentIdentificationNumber(normalizeText(request.documentIdentificationNumber()));
     entity.setArchived(request.archived());
-    return toResponse(entity);
+    replaceGuardians(entity.getId(), request.guardians());
+    return toResponse(entity, loadGuardians(entity.getId()));
   }
   @Transactional(readOnly = true)
   public PersonResponse get(Long id) {
@@ -103,7 +126,7 @@ public class PersonService {
         throw new AccessDeniedException("Person is not in current teacher's groups");
       }
     }
-    return toResponse(entity);
+    return toResponse(entity, loadGuardians(entity.getId()));
   }
 
   @Transactional(readOnly = true)
@@ -111,14 +134,14 @@ public class PersonService {
     if (prefix == null || prefix.isBlank()) {
       return personRepository.findTop50ByArchivedFalseOrderByLastNameAscFirstNameAsc()
           .stream()
-          .map(PersonService::toResponse)
+          .map(p -> toResponse(p, loadGuardians(p.getId())))
           .toList();
     }
 
     List<PersonResponse> result = personRepository
         .findTop50ByArchivedFalseAndLastNameStartingWithIgnoreCaseOrderByLastNameAscFirstNameAsc(prefix.trim())
         .stream()
-        .map(PersonService::toResponse)
+        .map(p -> toResponse(p, loadGuardians(p.getId())))
         .toList();
 
     return result;
@@ -126,6 +149,10 @@ public class PersonService {
 
 
   private static PersonResponse toResponse(PersonEntity entity) {
+    return toResponse(entity, List.of());
+  }
+
+  private static PersonResponse toResponse(PersonEntity entity, List<PersonGuardianResponse> guardians) {
     return new PersonResponse(
         entity.getId(),
         entity.getLastName(),
@@ -134,6 +161,14 @@ public class PersonService {
         entity.getBirthDate(),
         entity.getPhone(),
         entity.getEmail(),
+        entity.getResidentialAddress(),
+        entity.getDocumentType(),
+        entity.getDocumentSeries(),
+        entity.getDocumentNumber(),
+        entity.getDocumentIssueDate(),
+        entity.getDocumentIssuedBy(),
+        entity.getDocumentIdentificationNumber(),
+        guardians,
         entity.isArchived(),
         entity.getCreatedAt()
     );
@@ -143,7 +178,7 @@ public class PersonService {
     PersonEntity entity = personRepository.findById(id)
         .orElseThrow(() -> new NotFoundException("Person not found: id=" + id));
     entity.setArchived(archived);
-    return toResponse(entity);
+    return toResponse(entity, loadGuardians(entity.getId()));
   }
 
   private static String normalizePhone(String phone) {
@@ -168,4 +203,58 @@ public class PersonService {
     return trimmed.toLowerCase();
   }
 
+  private static String normalizeText(String value) {
+    if (value == null) {
+      return null;
+    }
+    String trimmed = value.trim();
+    return trimmed.isEmpty() ? null : trimmed;
+  }
+
+  private void replaceGuardians(Long childPersonId, List<PersonGuardianUpdateRequest> guardians) {
+    if (guardians == null) {
+      return;
+    }
+    List<PersonGuardianEntity> existing = personGuardianRepository.findByChildPersonIdAndArchivedFalseOrderByPrimaryGuardianDescCreatedAtAsc(childPersonId);
+    for (PersonGuardianEntity entity : existing) {
+      entity.setArchived(true);
+    }
+    for (PersonGuardianUpdateRequest guardian : guardians) {
+      String fullName = normalizeText(guardian.fullName());
+      if (fullName == null) {
+        continue;
+      }
+      personGuardianRepository.save(new PersonGuardianEntity(
+          null,
+          childPersonId,
+          fullName,
+          normalizePhone(guardian.phone()),
+          normalizeText(guardian.relationType()),
+          guardian.primaryGuardian(),
+          guardian.archived(),
+          Instant.now()));
+    }
+  }
+
+  private List<PersonGuardianResponse> loadGuardians(Long personId) {
+    return personGuardianRepository.findByChildPersonIdAndArchivedFalseOrderByPrimaryGuardianDescCreatedAtAsc(personId)
+        .stream()
+        .map(g -> new PersonGuardianResponse(
+            g.getId(),
+            g.getChildPersonId(),
+            g.getFullName(),
+            g.getPhone(),
+            g.getRelationType(),
+            g.isPrimaryGuardian(),
+            g.isArchived(),
+            g.getCreatedAt()))
+        .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public PersonResponse getDetailed(Long id) {
+    PersonEntity person = personRepository.findById(id)
+        .orElseThrow(() -> new NotFoundException("Person not found: id=" + id));
+    return toResponse(person, loadGuardians(id));
+  }
 }

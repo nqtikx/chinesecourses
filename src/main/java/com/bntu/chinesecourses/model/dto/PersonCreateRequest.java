@@ -8,6 +8,14 @@ public record PersonCreateRequest(
     String middleName,
     LocalDate birthDate,
     String phone,
-    String email
+    String email,
+    String residentialAddress,
+    String documentType,
+    String documentSeries,
+    String documentNumber,
+    LocalDate documentIssueDate,
+    String documentIssuedBy,
+    String documentIdentificationNumber,
+    java.util.List<PersonGuardianUpdateRequest> guardians
 ) {
 }
