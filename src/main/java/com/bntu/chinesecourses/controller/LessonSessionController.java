@@ -64,7 +64,10 @@ public class LessonSessionController {
 
   @GetMapping
   @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'GROUP')")
-  public List<LessonSessionResponse> findTop50(@RequestParam Long groupId) {
+  public List<LessonSessionResponse> findTop50(
+      @RequestParam Long groupId,
+      @RequestParam(defaultValue = "false") boolean includeArchived
+  ) {
     if (currentUserService.isGroupAccount()) {
       Long currentGroupId = currentUserService.getCurrentGroupId()
           .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Group id is not linked"));
@@ -72,7 +75,10 @@ public class LessonSessionController {
         throw new org.springframework.security.access.AccessDeniedException("Access only to own group sessions");
       }
     }
-    return lessonSessionService.findTop50ByGroup(groupId, currentUserService.getCurrentTeacherId().orElse(null));
+    return lessonSessionService.findTop50ByGroup(
+        groupId,
+        currentUserService.getCurrentTeacherId().orElse(null),
+        includeArchived);
   }
 
   @PatchMapping("/{id}/archive")
