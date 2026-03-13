@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
@@ -57,6 +58,7 @@ public class ContractPdfService {
   private final CurrentUserService currentUserService;
   private final GroupAccessService groupAccessService;
   private final int repeatDiscountPercent;
+  private final int repeatDiscountMaxBreakDays;
   private final BigDecimal semesterBasePrice;
 
   public ContractPdfService(
@@ -73,6 +75,7 @@ public class ContractPdfService {
       CurrentUserService currentUserService,
       GroupAccessService groupAccessService,
       @Value("${app.contracts.repeat-discount-percent:10}") int repeatDiscountPercent,
+      @Value("${app.contracts.repeat-discount-max-break-days:45}") int repeatDiscountMaxBreakDays,
       @Value("${app.contracts.base-price:1200}") BigDecimal semesterBasePrice) {
     this.adminUserService = adminUserService;
     this.userProfileService = userProfileService;
@@ -87,6 +90,7 @@ public class ContractPdfService {
     this.currentUserService = currentUserService;
     this.groupAccessService = groupAccessService;
     this.repeatDiscountPercent = repeatDiscountPercent;
+    this.repeatDiscountMaxBreakDays = repeatDiscountMaxBreakDays;
     this.semesterBasePrice = semesterBasePrice;
   }
 
@@ -441,7 +445,8 @@ public class ContractPdfService {
     LocalDate currentStart = currentEnrollment.getStartDate() != null
         ? currentEnrollment.getStartDate()
         : currentEnrollment.getCreatedAt().atZone(java.time.ZoneOffset.UTC).toLocalDate();
-    if (currentStart.isAfter(previousEnd.plusDays(1))) {
+    long breakDays = Math.max(0, ChronoUnit.DAYS.between(previousEnd, currentStart) - 1);
+    if (breakDays > repeatDiscountMaxBreakDays) {
       return 0;
     }
     return repeatDiscountPercent;

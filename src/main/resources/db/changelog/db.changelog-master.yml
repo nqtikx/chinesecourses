@@ -25,3 +25,9 @@ databaseChangeLog:
       file: db/changelog/changes/062-group-shared-accounts.yml
   - include:
       file: db/changelog/changes/063-journal-holidays-profile-contract-fields.yml
+  - include:
+      file: db/changelog/changes/070-seed-full-demo-data.yml
+  - include:
+      file: db/changelog/changes/071-seed-profile-guardians.yml
+  - include:
+      file: db/changelog/changes/072-seed-contracts-materials-notes-holidays.yml

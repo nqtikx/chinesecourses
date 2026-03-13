@@ -1,0 +1,73 @@
+databaseChangeLog:
+  - changeSet:
+      id: 071-seed-profile-guardians
+      author: chinesecourses
+      changes:
+        - sql:
+            sql: |
+              UPDATE person
+              SET residential_address = 'г. Минск, ул. Первомайская, д. 10, кв. 12',
+                  document_type = 'Паспорт',
+                  document_series = 'MP',
+                  document_number = '1234567',
+                  document_issue_date = '2018-04-11',
+                  document_issued_by = 'Октябрьский РУВД г. Минска',
+                  document_identification_number = '3850315A001PB2'
+              WHERE email = 'ivanov.p@example.com';
+
+              UPDATE person
+              SET residential_address = 'г. Минск, пр-т Независимости, д. 90, кв. 5',
+                  document_type = 'Паспорт',
+                  document_series = 'MC',
+                  document_number = '7654321',
+                  document_issue_date = '2019-09-21',
+                  document_issued_by = 'Первомайский РУВД г. Минска',
+                  document_identification_number = '4020110A002PB9'
+              WHERE email = 'kozlova.a@example.com';
+
+              UPDATE person
+              SET residential_address = 'г. Минск, ул. Я. Коласа, д. 44, кв. 17',
+                  document_type = 'Свидетельство о рождении',
+                  document_series = 'I-БН',
+                  document_number = '4455667',
+                  document_issue_date = '2012-09-01',
+                  document_issued_by = 'Отдел ЗАГС Советского района',
+                  document_identification_number = '5120819A003PB5'
+              WHERE email = 'smirnov.k@example.com';
+
+              UPDATE person
+              SET residential_address = 'г. Минск, ул. Жудро, д. 18, кв. 49',
+                  document_type = 'Свидетельство о рождении',
+                  document_series = 'I-БН',
+                  document_number = '9988776',
+                  document_issue_date = '2011-12-20',
+                  document_issued_by = 'Отдел ЗАГС Фрунзенского района',
+                  document_identification_number = '5111203A004PB1'
+              WHERE email = 'orlova.e@example.com';
+
+              UPDATE person
+              SET residential_address = 'г. Минск, ул. Сурганова, д. 73, кв. 21',
+                  document_type = 'ID-карта',
+                  document_series = NULL,
+                  document_number = 'IDBY987654321',
+                  document_issue_date = '2024-01-15',
+                  document_issued_by = 'МВД РБ',
+                  document_identification_number = '3040220A005PB4'
+              WHERE email IN ('morozova.l@example.com', 'kim.yuna@example.com', 'gromov.i@example.com');
+
+              INSERT INTO person_guardian (child_person_id, full_name, phone, relation_type, primary_guardian, archived, created_at)
+              SELECT child.id, v.full_name, v.phone, v.relation_type, v.primary_guardian, false, now()
+              FROM (
+                VALUES
+                  ('smirnov.k@example.com', 'Смирнова Ольга Викторовна', '+375291010011', 'MOTHER', true),
+                  ('smirnov.k@example.com', 'Смирнов Олег Николаевич', '+375291020210', 'FATHER', false),
+                  ('orlova.e@example.com', 'Орлов Сергей Андреевич', '+375291010013', 'FATHER', true),
+                  ('orlova.e@example.com', 'Орлова Наталья Игоревна', '+375291020211', 'MOTHER', false)
+              ) AS v(child_email, full_name, phone, relation_type, primary_guardian)
+              JOIN person child ON child.email = v.child_email
+              WHERE NOT EXISTS (
+                SELECT 1
+                FROM person_guardian pg
+                WHERE pg.child_person_id = child.id
+                  AND pg.full_name = v.full_name
+              );

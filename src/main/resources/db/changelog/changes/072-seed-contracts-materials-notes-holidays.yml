@@ -1,0 +1,106 @@
+databaseChangeLog:
+  - changeSet:
+      id: 072-seed-materials-contracts-notes-holidays
+      author: chinesecourses
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO study_material (group_id, file_name, file_type, storage_path, uploader_user_id, archived, created_at)
+              SELECT sg.id, v.file_name, v.file_type, v.storage_path, uploader.id, false, now()
+              FROM (
+                VALUES
+                  ('Группа A-1', 'hsk1-lesson-08-slides.pdf', 'application/pdf', 'materials/group-a1/hsk1-lesson-08-slides.pdf', 'teacher'),
+                  ('Группа A-1', 'characters-practice-week3.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'materials/group-a1/characters-practice-week3.docx', 'teacher'),
+                  ('Группа A-3', 'kids-flashcards-animals.pdf', 'application/pdf', 'materials/group-a3/kids-flashcards-animals.pdf', 'teacher_chen'),
+                  ('Группа A-3', 'homework-week2.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'materials/group-a3/homework-week2.xlsx', 'teacher_chen'),
+                  ('Группа T-1', 'tech-vocabulary-v1.pdf', 'application/pdf', 'materials/group-t1/tech-vocabulary-v1.pdf', 'teacher_chen'),
+                  ('Группа HSK3-C1', 'hsk3-reading-pack.pdf', 'application/pdf', 'materials/group-hsk3-c1/hsk3-reading-pack.pdf', 'teacher_zhang')
+              ) AS v(group_name, file_name, file_type, storage_path, uploader_username)
+              JOIN study_group sg ON sg.name = v.group_name
+              JOIN admin_user uploader ON uploader.username = v.uploader_username
+              WHERE NOT EXISTS (
+                SELECT 1
+                FROM study_material sm
+                WHERE sm.group_id = sg.id
+                  AND sm.storage_path = v.storage_path
+              );
+
+              INSERT INTO group_note (group_id, author_user_id, text, archived, created_at)
+              SELECT sg.id, author.id, v.text, false, now()
+              FROM (
+                VALUES
+                  ('Группа A-1', 'teacher', 'На следующей неделе контрольный мини-тест по иероглифам.'),
+                  ('Группа A-3', 'teacher_chen', 'Родительское собрание в субботу после занятия.'),
+                  ('Группа T-1', 'teacher_chen', 'Подготовить перевод технической инструкции до четверга.'),
+                  ('Группа HSK3-C1', 'teacher_zhang', 'Интенсивная подготовка к HSK3: домашняя работа обязательна.'),
+                  ('Группа A-1', 'admin', 'Группа отмечена как пилотная для нового журнала посещаемости.')
+              ) AS v(group_name, author_username, text)
+              JOIN study_group sg ON sg.name = v.group_name
+              JOIN admin_user author ON author.username = v.author_username
+              WHERE NOT EXISTS (
+                SELECT 1
+                FROM group_note gn
+                WHERE gn.group_id = sg.id
+                  AND gn.text = v.text
+              );
+
+              INSERT INTO academic_holiday (holiday_date, title, no_classes, archived, created_at)
+              VALUES
+                (DATE '2026-03-08', 'Международный женский день', true, false, now()),
+                (DATE '2026-04-25', 'Республиканский субботник', false, false, now()),
+                (DATE '2026-05-01', 'Праздник труда', true, false, now()),
+                (DATE '2026-05-09', 'День Победы', true, false, now())
+              ON CONFLICT (holiday_date) DO NOTHING;
+
+              INSERT INTO contract_document (
+                enrollment_id, user_id, course_id, group_id, contract_number,
+                file_name, storage_path, base_price, discount_percent, final_price, generated_by_user_id, created_at
+              )
+              SELECT e.id,
+                     student_user.id,
+                     c.id,
+                     sg.id,
+                     e.contract_number,
+                     'contract-' || e.contract_number || '.docx',
+                     'contracts/' || TO_CHAR(COALESCE(e.end_date, e.start_date), 'YYYY') || '/contract-' || e.contract_number || '.docx',
+                     v.base_price,
+                     v.discount_percent,
+                     ROUND(v.base_price * (100 - v.discount_percent) / 100.0, 2),
+                     admin_user.id,
+                     now()
+              FROM (
+                VALUES
+                  ('ivanov.p@example.com', 'Базовый курс HSK1', 'Осень 2025', 330.00, 0),
+                  ('kozlova.a@example.com', 'Базовый курс HSK1', 'Осень 2025', 330.00, 5),
+                  ('petrova.m@example.com', 'Базовый курс HSK1', 'Осень 2025', 330.00, 0),
+                  ('smirnov.k@example.com', 'Базовый курс HSK1', 'Весна 2026', 360.00, 10),
+                  ('morozova.l@example.com', 'Технический китайский язык', 'Весна 2026', 420.00, 0)
+              ) AS v(student_email, course_name, semester_name, base_price, discount_percent)
+              JOIN person p ON p.email = v.student_email
+              JOIN course c ON c.name = v.course_name
+              JOIN semester s ON s.course_id = c.id AND s.name = v.semester_name
+              JOIN enrollment e ON e.student_id = p.id AND e.semester_id = s.id AND e.archived = false
+              LEFT JOIN study_group sg ON sg.id = e.group_id
+              JOIN admin_user student_user ON student_user.person_id = p.id AND student_user.role = 'ROLE_USER'
+              JOIN admin_user admin_user ON admin_user.username = 'admin'
+              WHERE e.contract_number IS NOT NULL
+                AND NOT EXISTS (
+                  SELECT 1
+                  FROM contract_document cd
+                  WHERE cd.enrollment_id = e.id
+                );
+
+              INSERT INTO admin_user (username, password_hash, role, group_id, created_at)
+              SELECT 'group_' || sg.id,
+                     '$2b$10$RMlSEXxFi3ACoUTMvgXl6uKGDgxuL41l6GI9QXLvwkmKMXyZDD6Ue',
+                     'ROLE_GROUP',
+                     sg.id,
+                     now()
+              FROM study_group sg
+              WHERE NOT EXISTS (
+                SELECT 1
+                FROM admin_user au
+                WHERE au.group_id = sg.id
+                  AND au.role = 'ROLE_GROUP'
+              )
+              ON CONFLICT (username) DO NOTHING;
