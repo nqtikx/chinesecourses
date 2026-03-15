@@ -128,6 +128,10 @@ export interface UserProfileResponse {
   teacherEmail: string | null;
   currentCourse: ProfileCourseItemResponse | null;
   completedCourses: ProfileCourseItemResponse[];
+  completedCoursesCount: number;
+  consecutiveSemesterStreak: number;
+  nextDiscountPercent: number;
+  discountResetByGap: boolean;
 }
 
 export interface AdminUserListItemResponse {

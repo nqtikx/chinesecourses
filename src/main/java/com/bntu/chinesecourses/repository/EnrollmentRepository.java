@@ -3,6 +3,7 @@ package com.bntu.chinesecourses.repository;
 import com.bntu.chinesecourses.model.entity.ChineseLevel;
 import com.bntu.chinesecourses.model.entity.EnrollmentEntity;
 import com.bntu.chinesecourses.model.entity.EnrollmentStatus;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -42,6 +43,8 @@ public interface EnrollmentRepository extends JpaRepository<EnrollmentEntity, Lo
       Long semesterId,
       EnrollmentStatus status
   );
+
+  List<EnrollmentEntity> findByArchivedFalseAndStudentIdAndStatusIn(Long studentId, Collection<EnrollmentStatus> statuses);
 
   boolean existsByContractNumber(String contractNumber);
 }

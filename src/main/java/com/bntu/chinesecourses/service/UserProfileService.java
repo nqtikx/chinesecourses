@@ -23,6 +23,7 @@ import com.bntu.chinesecourses.repository.StudyGroupRepository;
 import com.bntu.chinesecourses.repository.TeacherRepository;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +38,7 @@ public class UserProfileService {
   private final CourseRepository courseRepository;
   private final StudyGroupRepository studyGroupRepository;
   private final TeacherRepository teacherRepository;
+  private final SemesterDiscountService semesterDiscountService;
 
   public UserProfileService(
       AdminUserService adminUserService,
@@ -46,7 +48,8 @@ public class UserProfileService {
       SemesterRepository semesterRepository,
       CourseRepository courseRepository,
       StudyGroupRepository studyGroupRepository,
-      TeacherRepository teacherRepository
+      TeacherRepository teacherRepository,
+      SemesterDiscountService semesterDiscountService
   ) {
     this.adminUserService = adminUserService;
     this.enrollmentService = enrollmentService;
@@ -56,6 +59,7 @@ public class UserProfileService {
     this.courseRepository = courseRepository;
     this.studyGroupRepository = studyGroupRepository;
     this.teacherRepository = teacherRepository;
+    this.semesterDiscountService = semesterDiscountService;
   }
 
   @Transactional(readOnly = true)
@@ -149,7 +153,7 @@ public class UserProfileService {
       return user.getPersonId();
     }
     if (user.getTeacherId() != null) {
-      TeacherEntity teacher = teacherRepository.findById(user.getTeacherId()).orElse(null);
+      TeacherEntity teacher = teacherRepository.findById(Objects.requireNonNull(user.getTeacherId())).orElse(null);
       if (teacher != null && teacher.getPerson() != null) {
         return teacher.getPerson().getId();
       }
@@ -164,14 +168,22 @@ public class UserProfileService {
 
     ProfileCourseItemResponse current = null;
     List<ProfileCourseItemResponse> completed = List.of();
+    SemesterDiscountService.DiscountEvaluation discountEvaluation =
+        new SemesterDiscountService.DiscountEvaluation(0, 0, 0, false);
     if (personId != null) {
       EnrollmentEntity currentEnrollment = enrollmentService.findCurrentForStudent(personId);
+      List<EnrollmentEntity> completedEnrollments = enrollmentService.findCompletedForStudent(personId);
       if (currentEnrollment != null) {
         current = mapProfileItem(currentEnrollment);
+        discountEvaluation = semesterDiscountService.evaluate(personId, currentEnrollment.getSemesterId());
       }
-      completed = enrollmentService.findCompletedForStudent(personId).stream()
+      completed = completedEnrollments.stream()
           .map(this::mapProfileItem)
           .toList();
+      if (currentEnrollment == null && !completedEnrollments.isEmpty()) {
+        EnrollmentEntity latestCompleted = completedEnrollments.getFirst();
+        discountEvaluation = semesterDiscountService.evaluate(personId, latestCompleted.getSemesterId());
+      }
     }
 
     String fullName = person == null ? null : buildFullName(person.getLastName(), person.getFirstName(), person.getMiddleName());
@@ -190,7 +202,7 @@ public class UserProfileService {
     String teacherPhone = null;
     String teacherEmail = null;
     if (current != null && current.groupId() != null) {
-      StudyGroupEntity group = studyGroupRepository.findById(current.groupId()).orElse(null);
+      StudyGroupEntity group = studyGroupRepository.findById(Objects.requireNonNull(current.groupId())).orElse(null);
       if (group != null && group.getTeacher() != null && group.getTeacher().getPerson() != null) {
         PersonEntity tp = group.getTeacher().getPerson();
         teacherFullName = buildFullName(tp.getLastName(), tp.getFirstName(), tp.getMiddleName());
@@ -219,14 +231,18 @@ public class UserProfileService {
         teacherPhone,
         teacherEmail,
         current,
-        completed
+        completed,
+        discountEvaluation.completedCoursesCount(),
+        discountEvaluation.consecutiveSemesterStreak(),
+        discountEvaluation.nextDiscountPercent(),
+        discountEvaluation.discountResetByGap()
     );
   }
 
   private ProfileCourseItemResponse mapProfileItem(EnrollmentEntity enrollment) {
-    SemesterEntity semester = semesterRepository.findById(enrollment.getSemesterId()).orElse(null);
-    CourseEntity course = semester == null ? null : courseRepository.findById(semester.getCourseId()).orElse(null);
-    StudyGroupEntity group = enrollment.getGroupId() == null ? null : studyGroupRepository.findById(enrollment.getGroupId()).orElse(null);
+    SemesterEntity semester = semesterRepository.findById(Objects.requireNonNull(enrollment.getSemesterId())).orElse(null);
+    CourseEntity course = semester == null ? null : courseRepository.findById(Objects.requireNonNull(semester.getCourseId())).orElse(null);
+    StudyGroupEntity group = enrollment.getGroupId() == null ? null : studyGroupRepository.findById(Objects.requireNonNull(enrollment.getGroupId())).orElse(null);
 
     String teacherName = null;
     if (group != null && group.getTeacher() != null && group.getTeacher().getPerson() != null) {
@@ -241,8 +257,8 @@ public class UserProfileService {
         group == null ? null : group.getId(),
         group == null ? null : group.getName(),
         teacherName,
-        enrollment.getStartDate(),
-        enrollment.getEndDate(),
+        enrollment.getStartDate() != null ? enrollment.getStartDate() : (semester == null ? null : semester.getStartDate()),
+        enrollment.getEndDate() != null ? enrollment.getEndDate() : (semester == null ? null : semester.getEndDate()),
         enrollment.getStatus().name()
     );
   }

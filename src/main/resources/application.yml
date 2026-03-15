@@ -13,6 +13,7 @@ app:
     contracts-dir: ${APP_STORAGE_CONTRACTS_DIR:contracts}
   contracts:
     repeat-discount-percent: ${APP_CONTRACT_REPEAT_DISCOUNT_PERCENT:10}
+    discount-growth-percentages: ${APP_CONTRACT_DISCOUNT_GROWTH_PERCENTAGES:0,5,10,15,20}
     base-price: ${APP_CONTRACT_BASE_PRICE:1200}
   group-account:
     default-password: ${APP_GROUP_ACCOUNT_DEFAULT_PASSWORD:admin}

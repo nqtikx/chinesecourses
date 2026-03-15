@@ -22,6 +22,10 @@ public record UserProfileResponse(
     String teacherPhone,
     String teacherEmail,
     ProfileCourseItemResponse currentCourse,
-    List<ProfileCourseItemResponse> completedCourses
+    List<ProfileCourseItemResponse> completedCourses,
+    int completedCoursesCount,
+    int consecutiveSemesterStreak,
+    int nextDiscountPercent,
+    boolean discountResetByGap
 ) {
 }

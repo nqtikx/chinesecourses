@@ -359,8 +359,30 @@ export default function ProfilePage() {
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Скидка по семестрам</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              <div className="rounded-lg border border-gray-200 px-3 py-2">
+                <div className="text-xs text-gray-500">Пройдено курсов</div>
+                <div className="font-semibold text-gray-900">{profile.completedCoursesCount}</div>
+              </div>
+              <div className="rounded-lg border border-gray-200 px-3 py-2">
+                <div className="text-xs text-gray-500">Непрерывных семестров</div>
+                <div className="font-semibold text-gray-900">{profile.consecutiveSemesterStreak}</div>
+              </div>
+              <div className="rounded-lg border border-primary-200 bg-primary-50 px-3 py-2">
+                <div className="text-xs text-gray-500">Скидка на договор</div>
+                <div className="font-semibold text-primary-700">{profile.nextDiscountPercent}%</div>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-3">
+              Скидка считается по непрерывной истории семестров: если пропущен хотя бы один семестр, цепочка сбрасывается.
+              {profile.discountResetByGap ? ' Обнаружен разрыв в истории регистрации.' : ''}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              <History className="w-4 h-4 text-blue-500" /> История завершенных курсов
+              <History className="w-4 h-4 text-blue-500" /> История завершенных курсов ({profile.completedCoursesCount})
             </h3>
             {profile.completedCourses.length === 0 ? (
               <p className="text-sm text-gray-400 italic">Завершённых курсов нет</p>
