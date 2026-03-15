@@ -18,6 +18,7 @@ import com.bntu.chinesecourses.repository.StudyGroupRepository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,54 +44,62 @@ public class EnrollmentService {
 
   @Transactional
   public EnrollmentResponse create(EnrollmentCreateRequest request) {
+    Long studentId = Objects.requireNonNull(request.studentId(), "studentId is required");
+    Long semesterId = Objects.requireNonNull(request.semesterId(), "semesterId is required");
+
     if (request.status() == null || request.level() == null) {
       throw new ConflictException("Status and level are required");
     }
 
-    if (!personRepository.existsById(request.studentId())) {
-      throw new NotFoundException("Student not found id=" + request.studentId());
+    if (!personRepository.existsById(studentId)) {
+      throw new NotFoundException("Student not found id=" + studentId);
     }
 
-    if (request.payerId() != null && !personRepository.existsById(request.payerId())) {
-      throw new NotFoundException("Payer not found id=" + request.payerId());
+    if (request.payerId() != null) {
+      Long payerId = Objects.requireNonNull(request.payerId());
+      if (!personRepository.existsById(payerId)) {
+        throw new NotFoundException("Payer not found id=" + payerId);
+      }
     }
 
-    SemesterEntity semester = semesterRepository.findById(request.semesterId())
-        .orElseThrow(() -> new NotFoundException("Semester not found id=" + request.semesterId()));
+    SemesterEntity semester = semesterRepository.findById(semesterId)
+        .orElseThrow(() -> new NotFoundException("Semester not found id=" + semesterId));
 
     if (request.groupId() != null) {
-      StudyGroupEntity group = studyGroupRepository.findById(request.groupId())
-          .orElseThrow(() -> new NotFoundException("Group not found id=" + request.groupId()));
+      Long groupId = Objects.requireNonNull(request.groupId());
+      StudyGroupEntity group = studyGroupRepository.findById(groupId)
+          .orElseThrow(() -> new NotFoundException("Group not found id=" + groupId));
 
-      if (!group.getSemesterId().equals(request.semesterId())) {
+      if (!group.getSemesterId().equals(semesterId)) {
         throw new ConflictException("Group belongs to another semester");
       }
     }
 
-    if (enrollmentRepository.existsByArchivedFalseAndStudentIdAndSemesterId(request.studentId(), request.semesterId())) {
+    if (enrollmentRepository.existsByArchivedFalseAndStudentIdAndSemesterId(studentId, semesterId)) {
       throw new ConflictException(
-          "Enrollment already exists for studentId=" + request.studentId() + " and semesterId=" + request.semesterId()
+          "Enrollment already exists for studentId=" + studentId + " and semesterId=" + semesterId
       );
     }
 
     if (request.status() == EnrollmentStatus.ACTIVE
-        && enrollmentRepository.existsByArchivedFalseAndStudentIdAndStatus(request.studentId(), EnrollmentStatus.ACTIVE)) {
+        && enrollmentRepository.existsByArchivedFalseAndStudentIdAndStatus(studentId, EnrollmentStatus.ACTIVE)) {
       throw new ConflictException("Student already has IN_PROGRESS enrollment");
     }
 
     LocalDate startDate = request.startDate() != null ? request.startDate() : semester.getStartDate();
+    LocalDate endDate = semester.getEndDate();
 
     EnrollmentEntity entity = new EnrollmentEntity(
         null,
-        request.studentId(),
+        studentId,
         request.payerId(),
-        request.semesterId(),
+        semesterId,
         request.groupId(),
         request.status(),
         request.level(),
         false,
         startDate,
-        null,
+        endDate,
         null,
         Instant.now()
     );
@@ -106,7 +115,8 @@ public class EnrollmentService {
 
   @Transactional(readOnly = true)
   public EnrollmentResponse get(Long id, Long teacherIdFilter) {
-    EnrollmentEntity entity = enrollmentRepository.findById(id)
+    Long enrollmentId = Objects.requireNonNull(id, "id is required");
+    EnrollmentEntity entity = enrollmentRepository.findById(enrollmentId)
         .orElseThrow(() -> new NotFoundException("Enrollment not found: id=" + id));
     if (teacherIdFilter != null && entity.getGroupId() != null) {
       StudyGroupEntity group = studyGroupRepository.findByIdAndArchivedFalse(entity.getGroupId())
@@ -123,7 +133,8 @@ public class EnrollmentService {
 
   @Transactional
   public EnrollmentResponse update(Long id, EnrollmentUpdateRequest request) {
-    EnrollmentEntity entity = enrollmentRepository.findById(id)
+    Long enrollmentId = Objects.requireNonNull(id, "id is required");
+    EnrollmentEntity entity = enrollmentRepository.findById(enrollmentId)
         .orElseThrow(() -> new NotFoundException("Enrollment not found: id=" + id));
 
     if (request.status() == null
@@ -131,6 +142,9 @@ public class EnrollmentService {
         || request.semesterId() == null) {
       throw new ConflictException("Invalid enrollment update payload");
     }
+
+    SemesterEntity semester = semesterRepository.findById(Objects.requireNonNull(request.semesterId(), "semesterId is required"))
+        .orElseThrow(() -> new NotFoundException("Semester not found id=" + request.semesterId()));
 
     if (request.status() == EnrollmentStatus.ACTIVE
         && entity.getStatus() != EnrollmentStatus.ACTIVE
@@ -143,12 +157,8 @@ public class EnrollmentService {
     entity.setGroupId(request.groupId());
     entity.setStatus(request.status());
     entity.setLevel(request.level());
-    if (request.startDate() != null) {
-      entity.setStartDate(request.startDate());
-    }
-    if (request.endDate() != null) {
-      entity.setEndDate(request.endDate());
-    }
+    entity.setStartDate(request.startDate() != null ? request.startDate() : semester.getStartDate());
+    entity.setEndDate(request.endDate() != null ? request.endDate() : semester.getEndDate());
     entity.setArchived(request.archived());
     return toResponse(entity);
   }
@@ -198,7 +208,8 @@ public class EnrollmentService {
 
   @Transactional
   public EnrollmentResponse setArchived(Long id, boolean archived) {
-    EnrollmentEntity entity = enrollmentRepository.findById(id)
+    Long enrollmentId = Objects.requireNonNull(id, "id is required");
+    EnrollmentEntity entity = enrollmentRepository.findById(enrollmentId)
         .orElseThrow(() -> new NotFoundException("Enrollment not found: id=" + id));
     entity.setArchived(archived);
     return toResponse(entity);
@@ -222,7 +233,7 @@ public class EnrollmentService {
       EnrollmentEntity enrollment = enrollmentRepository.findFirstByArchivedFalseAndStudentIdAndGroupIdAndStatusOrderByCreatedAtDesc(
               studentId, groupId, EnrollmentStatus.ACTIVE)
           .orElseThrow(() -> new NotFoundException("Active enrollment not found for student/group"));
-      SemesterEntity sem = semesterRepository.findById(enrollment.getSemesterId())
+      SemesterEntity sem = semesterRepository.findById(Objects.requireNonNull(enrollment.getSemesterId()))
           .orElseThrow(() -> new NotFoundException("Semester not found for enrollment"));
       if (!sem.getCourseId().equals(courseId)) {
         throw new ConflictException("Selected group does not belong to selected course");
@@ -233,7 +244,7 @@ public class EnrollmentService {
         studentId, EnrollmentStatus.ACTIVE);
     return enrollments.stream()
         .filter(e -> {
-          SemesterEntity sem = semesterRepository.findById(e.getSemesterId()).orElse(null);
+          SemesterEntity sem = semesterRepository.findById(Objects.requireNonNull(e.getSemesterId())).orElse(null);
           return sem != null && sem.getCourseId().equals(courseId);
         })
         .findFirst()
@@ -242,12 +253,15 @@ public class EnrollmentService {
 
   @Transactional
   public EnrollmentEntity completeEnrollment(Long id, LocalDate endDate) {
-    EnrollmentEntity entity = enrollmentRepository.findById(id)
+    Long enrollmentId = Objects.requireNonNull(id, "id is required");
+    EnrollmentEntity entity = enrollmentRepository.findById(enrollmentId)
         .orElseThrow(() -> new NotFoundException("Enrollment not found: id=" + id));
+    SemesterEntity semester = semesterRepository.findById(Objects.requireNonNull(entity.getSemesterId()))
+        .orElseThrow(() -> new NotFoundException("Semester not found for enrollment: id=" + entity.getSemesterId()));
     entity.setStatus(EnrollmentStatus.COMPLETED);
-    entity.setEndDate(endDate != null ? endDate : LocalDate.now());
+    entity.setEndDate(endDate != null ? endDate : semester.getEndDate());
     if (entity.getStartDate() == null) {
-      entity.setStartDate(entity.getCreatedAt().atZone(java.time.ZoneOffset.UTC).toLocalDate());
+      entity.setStartDate(semester.getStartDate());
     }
     return entity;
   }

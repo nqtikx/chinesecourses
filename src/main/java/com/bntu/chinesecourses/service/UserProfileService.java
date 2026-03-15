@@ -257,8 +257,8 @@ public class UserProfileService {
         group == null ? null : group.getId(),
         group == null ? null : group.getName(),
         teacherName,
-        enrollment.getStartDate(),
-        enrollment.getEndDate(),
+        enrollment.getStartDate() != null ? enrollment.getStartDate() : (semester == null ? null : semester.getStartDate()),
+        enrollment.getEndDate() != null ? enrollment.getEndDate() : (semester == null ? null : semester.getEndDate()),
         enrollment.getStatus().name()
     );
   }

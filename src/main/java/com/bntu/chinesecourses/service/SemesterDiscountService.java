@@ -5,6 +5,7 @@ import com.bntu.chinesecourses.model.entity.EnrollmentStatus;
 import com.bntu.chinesecourses.model.entity.SemesterEntity;
 import com.bntu.chinesecourses.repository.EnrollmentRepository;
 import com.bntu.chinesecourses.repository.SemesterRepository;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -49,12 +50,9 @@ public class SemesterDiscountService {
       return new DiscountEvaluation(completedCoursesCount, 0, 0, false);
     }
 
-    Map<Long, Integer> semesterIndexById = new HashMap<>();
-    for (int i = 0; i < semesters.size(); i++) {
-      semesterIndexById.put(semesters.get(i).getId(), i);
-    }
-
-    Integer currentIndex = semesterIndexById.get(currentSemesterId);
+    List<TermWindow> orderedTerms = buildOrderedTerms(semesters);
+    Map<Long, Integer> semesterTermIndexById = mapSemesterToTermIndex(semesters, orderedTerms);
+    Integer currentIndex = semesterTermIndexById.get(currentSemesterId);
     if (currentIndex == null) {
       return new DiscountEvaluation(completedCoursesCount, 0, 0, false);
     }
@@ -70,10 +68,17 @@ public class SemesterDiscountService {
       return new DiscountEvaluation(completedCoursesCount, 0, 0, false);
     }
 
+    Set<Integer> enrolledTermIndexes = new HashSet<>();
+    for (Long semesterId : enrolledSemesterIds) {
+      Integer termIndex = semesterTermIndexById.get(semesterId);
+      if (termIndex != null) {
+        enrolledTermIndexes.add(termIndex);
+      }
+    }
+
     int streak = 0;
     for (int i = currentIndex; i >= 0; i--) {
-      Long semesterId = semesters.get(i).getId();
-      if (enrolledSemesterIds.contains(semesterId)) {
+      if (enrolledTermIndexes.contains(i)) {
         streak++;
       } else {
         break;
@@ -82,9 +87,8 @@ public class SemesterDiscountService {
 
     int streakStartIndex = currentIndex - streak + 1;
     boolean hasEnrollmentBeforeStreak = false;
-    for (Long semesterId : enrolledSemesterIds) {
-      Integer idx = semesterIndexById.get(semesterId);
-      if (idx != null && idx < streakStartIndex) {
+    for (Integer idx : enrolledTermIndexes) {
+      if (idx < streakStartIndex) {
         hasEnrollmentBeforeStreak = true;
         break;
       }
@@ -130,11 +134,48 @@ public class SemesterDiscountService {
     return List.copyOf(values);
   }
 
+  private static List<TermWindow> buildOrderedTerms(List<SemesterEntity> semesters) {
+    List<TermWindow> orderedTerms = new ArrayList<>();
+    Set<String> seen = new HashSet<>();
+    for (SemesterEntity semester : semesters) {
+      TermWindow term = new TermWindow(semester.getStartDate(), semester.getEndDate());
+      if (seen.add(term.key())) {
+        orderedTerms.add(term);
+      }
+    }
+    return orderedTerms;
+  }
+
+  private static Map<Long, Integer> mapSemesterToTermIndex(
+      List<SemesterEntity> semesters,
+      List<TermWindow> orderedTerms) {
+    Map<String, Integer> termIndexByKey = new HashMap<>();
+    for (int i = 0; i < orderedTerms.size(); i++) {
+      termIndexByKey.put(orderedTerms.get(i).key(), i);
+    }
+
+    Map<Long, Integer> semesterTermIndexById = new HashMap<>();
+    for (SemesterEntity semester : semesters) {
+      TermWindow term = new TermWindow(semester.getStartDate(), semester.getEndDate());
+      Integer index = termIndexByKey.get(term.key());
+      if (index != null) {
+        semesterTermIndexById.put(semester.getId(), index);
+      }
+    }
+    return semesterTermIndexById;
+  }
+
   public record DiscountEvaluation(
       int completedCoursesCount,
       int consecutiveSemesterStreak,
       int nextDiscountPercent,
       boolean discountResetByGap
   ) {
+  }
+
+  private record TermWindow(LocalDate startDate, LocalDate endDate) {
+    private String key() {
+      return startDate + "|" + endDate;
+    }
   }
 }
