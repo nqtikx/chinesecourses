@@ -22,7 +22,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
@@ -57,8 +56,7 @@ public class ContractPdfService {
   private final FileStorageService fileStorageService;
   private final CurrentUserService currentUserService;
   private final GroupAccessService groupAccessService;
-  private final int repeatDiscountPercent;
-  private final int repeatDiscountMaxBreakDays;
+  private final SemesterDiscountService semesterDiscountService;
   private final BigDecimal semesterBasePrice;
 
   public ContractPdfService(
@@ -74,8 +72,7 @@ public class ContractPdfService {
       FileStorageService fileStorageService,
       CurrentUserService currentUserService,
       GroupAccessService groupAccessService,
-      @Value("${app.contracts.repeat-discount-percent:10}") int repeatDiscountPercent,
-      @Value("${app.contracts.repeat-discount-max-break-days:45}") int repeatDiscountMaxBreakDays,
+      SemesterDiscountService semesterDiscountService,
       @Value("${app.contracts.base-price:1200}") BigDecimal semesterBasePrice) {
     this.adminUserService = adminUserService;
     this.userProfileService = userProfileService;
@@ -89,8 +86,7 @@ public class ContractPdfService {
     this.fileStorageService = fileStorageService;
     this.currentUserService = currentUserService;
     this.groupAccessService = groupAccessService;
-    this.repeatDiscountPercent = repeatDiscountPercent;
-    this.repeatDiscountMaxBreakDays = repeatDiscountMaxBreakDays;
+    this.semesterDiscountService = semesterDiscountService;
     this.semesterBasePrice = semesterBasePrice;
   }
 
@@ -119,7 +115,9 @@ public class ContractPdfService {
 
     String contractNumber = resolveOrCreateContractNumber(enrollment);
 
-    int discountPercent = resolveDiscountPercent(personId, enrollment);
+    int discountPercent = semesterDiscountService
+        .evaluate(personId, enrollment.getSemesterId())
+        .nextDiscountPercent();
 
     PriceCalculation calculation = calculatePrice(semesterBasePrice, discountPercent);
 
@@ -431,25 +429,6 @@ public class ContractPdfService {
   private static int resolveAcademicHours(String courseName) {
     String normalized = safe(courseName).toLowerCase();
     return normalized.contains("техническ") ? 96 : 64;
-  }
-
-  private int resolveDiscountPercent(Long studentId, EnrollmentEntity currentEnrollment) {
-    List<EnrollmentEntity> completed = enrollmentService.findCompletedForStudent(studentId);
-    if (completed.isEmpty()) {
-      return 0;
-    }
-    EnrollmentEntity latestCompleted = completed.getFirst();
-    LocalDate previousEnd = latestCompleted.getEndDate() != null
-        ? latestCompleted.getEndDate()
-        : latestCompleted.getCreatedAt().atZone(java.time.ZoneOffset.UTC).toLocalDate();
-    LocalDate currentStart = currentEnrollment.getStartDate() != null
-        ? currentEnrollment.getStartDate()
-        : currentEnrollment.getCreatedAt().atZone(java.time.ZoneOffset.UTC).toLocalDate();
-    long breakDays = Math.max(0, ChronoUnit.DAYS.between(previousEnd, currentStart) - 1);
-    if (breakDays > repeatDiscountMaxBreakDays) {
-      return 0;
-    }
-    return repeatDiscountPercent;
   }
 
   private static String buildDocumentLine(PersonEntity person) {
