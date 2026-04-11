@@ -12,10 +12,12 @@ export default function ContractsPage() {
   const [courses, setCourses] = useState<CourseResponse[]>([]);
   const [semesters, setSemesters] = useState<SemesterResponse[]>([]);
   const [groups, setGroups] = useState<StudyGroupResponse[]>([]);
+  const [templates, setTemplates] = useState<string[]>([]);
 
   const [userId, setUserId] = useState<number | null>(null);
   const [courseId, setCourseId] = useState<number | null>(null);
   const [groupId, setGroupId] = useState<number | null>(null);
+  const [templateName, setTemplateName] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [list, setList] = useState<ContractDocumentResponse[]>([]);
 
@@ -24,6 +26,7 @@ export default function ContractsPage() {
       adminUsersApi.list().then(({ data }) => setUsers(data)).catch(() => toast('error', 'Не удалось загрузить пользователей'));
       coursesApi.list().then(({ data }) => setCourses(data)).catch(() => toast('error', 'Не удалось загрузить курсы'));
       contractsApi.all().then(({ data }) => setList(data)).catch(() => setList([]));
+      contractsApi.templates().then(({ data }) => setTemplates(data)).catch(() => setTemplates([]));
     } else {
       contractsApi.my().then(({ data }) => setList(data)).catch(() => setList([]));
     }
@@ -60,21 +63,28 @@ export default function ContractsPage() {
     }
     setLoading(true);
     try {
-      const { data } = await contractsApi.generate({ userId, courseId, groupId: groupId ?? undefined });
+      const { data } = await contractsApi.generate({
+        userId,
+        courseId,
+        groupId: groupId ?? undefined,
+        templateName: templateName || undefined,
+      });
       const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `contract-user-${userId}-course-${courseId}.docx`;
+      link.download = templateName
+        ? `doc-user-${userId}-${templateName}`
+        : `contract-user-${userId}-course-${courseId}.docx`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      toast('success', 'Word-договор сформирован');
+      toast('success', 'Документ сформирован');
       const refreshed = await contractsApi.all();
       setList(refreshed.data);
     } catch {
-      toast('error', 'Не удалось сформировать договор');
+      toast('error', 'Не удалось сформировать документ');
     } finally {
       setLoading(false);
     }
@@ -143,6 +153,27 @@ export default function ContractsPage() {
             )}
           </div>
 
+          {/* Выбор шаблона документа */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Шаблон документа
+              <span className="ml-1 text-xs text-gray-400 font-normal">(не выбрано — стандартный договор)</span>
+            </label>
+            <select
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">Стандартный договор (генерируется автоматически)</option>
+              {templates.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            {templates.length === 0 && (
+              <p className="text-xs text-gray-400 mt-1">Шаблоны не найдены. Настройте путь APP_STORAGE_TEMPLATES_DIR.</p>
+            )}
+          </div>
+
           <div className="pt-2">
             <button
               onClick={generateContract}
@@ -150,7 +181,7 @@ export default function ContractsPage() {
               className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium disabled:opacity-50"
             >
               <Download className="w-4 h-4" />
-              {loading ? 'Формирование...' : 'Сгенерировать договор'}
+              {loading ? 'Формирование...' : 'Сгенерировать документ'}
             </button>
           </div>
         </div>

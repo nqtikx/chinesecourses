@@ -132,6 +132,8 @@ export const scheduleRulesApi = {
 export const adminUsersApi = {
   list: () => client.get<AdminUserListItemResponse[]>('/api/admin/users'),
   profile: (id: number) => client.get<UserProfileResponse>(`/api/admin/users/${id}/profile`),
+  updateProfile: (id: number, data: Parameters<typeof profileApi.updateMe>[0]) =>
+    client.patch<UserProfileResponse>(`/api/admin/users/${id}/profile`, data),
 };
 
 export const adminEnrollmentsApi = {
@@ -142,8 +144,9 @@ export const adminEnrollmentsApi = {
 };
 
 export const contractsApi = {
-  generate: (data: { userId: number; courseId: number; groupId?: number }) =>
+  generate: (data: { userId: number; courseId: number; groupId?: number; templateName?: string }) =>
     client.post('/api/admin/contracts', data, { responseType: 'blob' }),
+  templates: () => client.get<string[]>('/api/admin/contracts/templates'),
   my: () => client.get<ContractDocumentResponse[]>('/api/contracts/my'),
   byGroup: (groupId: number) => client.get<ContractDocumentResponse[]>(`/api/contracts?groupId=${groupId}`),
   all: () => client.get<ContractDocumentResponse[]>('/api/admin/contracts'),
