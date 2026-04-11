@@ -126,6 +126,64 @@ public class UserProfileService {
     return buildProfile(user);
   }
 
+  /** Admin-only: update another user's person profile by their user id. */
+  @Transactional
+  public UserProfileResponse updateByUserId(Long userId, ProfileUpdateRequest request) {
+    AdminUserEntity user = adminUserService.findById(userId)
+        .orElseThrow(() -> new NotFoundException("User not found id=" + userId));
+    Long personId = resolvePersonId(user);
+    if (personId == null) {
+      throw new NotFoundException("User id=" + userId + " has no linked person profile");
+    }
+    PersonEntity person = personRepository.findById(personId)
+        .orElseThrow(() -> new NotFoundException("Person not found id=" + personId));
+    if (request.firstName() != null && !request.firstName().isBlank()) {
+      person.setFirstName(request.firstName().trim());
+    }
+    if (request.lastName() != null && !request.lastName().isBlank()) {
+      person.setLastName(request.lastName().trim());
+    }
+    if (request.middleName() != null) {
+      person.setMiddleName(request.middleName().trim().isEmpty() ? null : request.middleName().trim());
+    }
+    if (request.birthDate() != null) {
+      person.setBirthDate(request.birthDate());
+    }
+    if (request.email() != null) {
+      String email = request.email().trim().isEmpty() ? null : request.email().trim().toLowerCase();
+      person.setEmail(email);
+    }
+    if (request.phone() != null) {
+      String phone = request.phone().trim().isEmpty() ? null : request.phone().trim();
+      person.setPhone(phone);
+    }
+    if (request.residentialAddress() != null) {
+      person.setResidentialAddress(normalizeText(request.residentialAddress()));
+    }
+    if (request.documentType() != null) {
+      person.setDocumentType(normalizeText(request.documentType()));
+    }
+    if (request.documentSeries() != null) {
+      person.setDocumentSeries(normalizeText(request.documentSeries()));
+    }
+    if (request.documentNumber() != null) {
+      person.setDocumentNumber(normalizeText(request.documentNumber()));
+    }
+    if (request.documentIssueDate() != null) {
+      person.setDocumentIssueDate(request.documentIssueDate());
+    }
+    if (request.documentIssuedBy() != null) {
+      person.setDocumentIssuedBy(normalizeText(request.documentIssuedBy()));
+    }
+    if (request.documentIdentificationNumber() != null) {
+      person.setDocumentIdentificationNumber(normalizeText(request.documentIdentificationNumber()));
+    }
+    if (request.guardians() != null) {
+      replaceGuardians(personId, request.guardians());
+    }
+    return buildProfile(user);
+  }
+
   @Transactional(readOnly = true)
   public UserProfileResponse getByUserId(Long userId) {
     AdminUserEntity user = adminUserService.findById(userId)

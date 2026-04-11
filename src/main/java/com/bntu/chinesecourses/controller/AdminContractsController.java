@@ -32,9 +32,30 @@ public class AdminContractsController {
     return contractPdfService.listAllContracts();
   }
 
+  /**
+   * Lists the names of available DOCX template files from the configured templates directory.
+   */
+  @GetMapping("/templates")
+  public List<String> listTemplates() {
+    return contractPdfService.listTemplates();
+  }
+
+  /**
+   * Generates a contract document.
+   *
+   * <ul>
+   *   <li>If {@code templateName} is present in the request body, template-based generation
+   *       is used: the specified DOCX file is loaded and its placeholders are filled with
+   *       profile data.
+   *   <li>Otherwise, the existing programmatic generation is used.
+   * </ul>
+   */
   @PostMapping
   public ResponseEntity<byte[]> createContract(@Valid @RequestBody AdminContractCreateRequest request) {
-    ContractPdfService.GeneratedContract contract = contractPdfService.generate(request);
+    ContractPdfService.GeneratedContract contract = request.templateName() != null && !request.templateName().isBlank()
+        ? contractPdfService.generateFromTemplate(request)
+        : contractPdfService.generate(request);
+
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.parseMediaType(
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
