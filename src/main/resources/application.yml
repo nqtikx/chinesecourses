@@ -11,6 +11,9 @@ app:
     base-dir: ${APP_STORAGE_BASE_DIR:data/storage}
     materials-dir: ${APP_STORAGE_MATERIALS_DIR:materials}
     contracts-dir: ${APP_STORAGE_CONTRACTS_DIR:contracts}
+    # Absolute or relative path to the directory with .docx contract templates.
+    # Set APP_STORAGE_TEMPLATES_DIR in environment for production (e.g. a mounted volume).
+    templates-dir: ${APP_STORAGE_TEMPLATES_DIR:}
   contracts:
     repeat-discount-percent: ${APP_CONTRACT_REPEAT_DISCOUNT_PERCENT:10}
     discount-growth-percentages: ${APP_CONTRACT_DISCOUNT_GROWTH_PERCENTAGES:0,5,10,15,20}
