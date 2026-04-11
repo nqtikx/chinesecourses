@@ -173,37 +173,41 @@ export default function ProfilePage() {
 
   const saveMyProfile = async () => {
     setSavingProfile(true);
+    const payload = {
+      firstName: editForm.firstName,
+      lastName: editForm.lastName,
+      middleName: editForm.middleName,
+      email: editForm.email,
+      phone: editForm.phone,
+      birthDate: editForm.birthDate || undefined,
+      residentialAddress: editForm.residentialAddress || undefined,
+      documentType: editForm.documentType || undefined,
+      documentSeries: editForm.documentSeries || undefined,
+      documentNumber: editForm.documentNumber || undefined,
+      documentIssueDate: editForm.documentIssueDate || undefined,
+      documentIssuedBy: editForm.documentIssuedBy || undefined,
+      documentIdentificationNumber: editForm.documentIdentificationNumber || undefined,
+      guardians: guardians.map((g, idx) => ({
+        id: g.id,
+        fullName: g.fullName,
+        phone: g.phone || undefined,
+        relationType: g.relationType || undefined,
+        primaryGuardian: idx === 0 ? true : g.primaryGuardian,
+        archived: g.archived,
+      })),
+    };
     try {
-      await profileApi.updateMe({
-        firstName: editForm.firstName,
-        lastName: editForm.lastName,
-        middleName: editForm.middleName,
-        email: editForm.email,
-        phone: editForm.phone,
-        birthDate: editForm.birthDate || undefined,
-        residentialAddress: editForm.residentialAddress || undefined,
-        documentType: editForm.documentType || undefined,
-        documentSeries: editForm.documentSeries || undefined,
-        documentNumber: editForm.documentNumber || undefined,
-        documentIssueDate: editForm.documentIssueDate || undefined,
-        documentIssuedBy: editForm.documentIssuedBy || undefined,
-        documentIdentificationNumber: editForm.documentIdentificationNumber || undefined,
-        guardians: guardians.map((g, idx) => ({
-          id: g.id,
-          fullName: g.fullName,
-          phone: g.phone || undefined,
-          relationType: g.relationType || undefined,
-          primaryGuardian: idx === 0 ? true : g.primaryGuardian,
-          archived: g.archived,
-        })),
-      });
+      // Если Admin смотрит чужой профиль — обновляем через admin endpoint
+      if (isAdmin && selectedUserId) {
+        await adminUsersApi.updateProfile(selectedUserId, payload);
+      } else {
+        await profileApi.updateMe(payload);
+      }
       toast('success', 'Профиль обновлён');
-      if (profile) {
-        if (isAdmin && selectedUserId) {
-          await loadByUser(selectedUserId);
-        } else {
-          await loadMe();
-        }
+      if (isAdmin && selectedUserId) {
+        await loadByUser(selectedUserId);
+      } else {
+        await loadMe();
       }
     } catch {
       toast('error', 'Не удалось сохранить профиль');
