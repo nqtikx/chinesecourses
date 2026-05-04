@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+/** Прод: URL бэкенда (Render и т.п.). Локально пусто — Vite proxy на /api. */
+const apiBase = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
+
 const client = axios.create({
-  baseURL: '',
+  baseURL: apiBase,
   headers: { 'Content-Type': 'application/json' },
 });
 
