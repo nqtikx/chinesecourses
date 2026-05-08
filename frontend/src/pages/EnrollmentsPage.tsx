@@ -6,7 +6,7 @@ import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
 import { toast } from '../components/ui/Toast';
-import { Plus, Pencil, Archive, ArchiveRestore, ClipboardList, UserPlus, Search, ChevronDown } from 'lucide-react';
+import { ClipboardList, UserPlus, Search } from 'lucide-react';
 
 const STATUS_LABELS: Record<EnrollmentStatus, string> = { APPLICANT: 'Заявка', ACTIVE: 'Активен', COMPLETED: 'Завершён' };
 const STATUS_COLORS: Record<EnrollmentStatus, 'yellow' | 'green' | 'blue'> = { APPLICANT: 'yellow', ACTIVE: 'green', COMPLETED: 'blue' };
@@ -187,14 +187,6 @@ export default function EnrollmentsPage() {
     } catch { toast('error', 'Ошибка сохранения'); }
   };
 
-  const toggleArchive = async (e: EnrollmentResponse) => {
-    try {
-      await enrollmentsApi.archive(e.id, { archived: !e.archived });
-      toast('success', e.archived ? 'Запись восстановлена' : 'Запись архивирована');
-      loadEnrollments();
-    } catch { toast('error', 'Ошибка'); }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -205,7 +197,7 @@ export default function EnrollmentsPage() {
           <p className="text-sm text-gray-500">{isAdmin ? 'Управление записями студентов в группы' : 'Просмотр записей'}</p>
           </div>
         </div>
-        {isAdmin && (
+        {isAdmin && !isGroup && (
           <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium">
             <UserPlus className="w-4 h-4" /> Записать студента
           </button>
@@ -290,11 +282,6 @@ export default function EnrollmentsPage() {
                       <Badge variant={STATUS_COLORS[e.status]}>{STATUS_LABELS[e.status]}</Badge>
                     )}
                     {e.archived && <Badge variant="gray">Архив</Badge>}
-                    {isAdmin && (
-                      <button onClick={() => toggleArchive(e)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title={e.archived ? 'Восстановить' : 'Архивировать'}>
-                        {e.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
-                      </button>
-                    )}
                   </div>
                 </div>
               );
@@ -303,7 +290,7 @@ export default function EnrollmentsPage() {
         )}
       </div>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Записать студента" wide>
+      <Modal open={isAdmin && !isGroup && modalOpen} onClose={() => setModalOpen(false)} title="Записать студента" wide>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Поиск студента по фамилии</label>

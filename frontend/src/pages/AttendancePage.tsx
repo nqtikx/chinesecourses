@@ -142,12 +142,25 @@ export default function AttendancePage() {
 
   const markAttendance = async (row: StudentRow, status: AttendanceStatus) => {
     if (!selectedSession) return;
+    let comment = row.attendance?.comment || undefined;
+    if (status === 'LATE' || status === 'EXCUSED') {
+      const reason = window.prompt('Укажите причину:', row.attendance?.comment || '');
+      if (reason === null) return;
+      const trimmed = reason.trim();
+      if (!trimmed) {
+        toast('error', 'Для выбранного статуса нужно указать причину');
+        return;
+      }
+      comment = trimmed;
+    } else {
+      comment = undefined;
+    }
     setSaving(row.enrollment.id);
     try {
       if (row.attendance) {
-        await attendanceApi.update(row.attendance.id, { status, archived: false });
+        await attendanceApi.update(row.attendance.id, { status, comment, archived: false });
       } else {
-        await attendanceApi.create({ lessonSessionId: selectedSession, enrollmentId: row.enrollment.id, status });
+        await attendanceApi.create({ lessonSessionId: selectedSession, enrollmentId: row.enrollment.id, status, comment });
       }
       await loadAttendance();
       toast('success', `${row.studentName}: ${STATUS_LABELS[status]}`);

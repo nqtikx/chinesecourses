@@ -1,17 +1,21 @@
-import { useState, type FormEvent } from 'react';
-import { personsApi } from '../api';
-import type { PersonResponse } from '../types';
+import { useEffect, useState, type FormEvent } from 'react';
+import { classProfilesApi, enrollmentsApi, personsApi } from '../api';
+import type { ClassProfileGroupItemResponse, PersonResponse } from '../types';
 import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
-import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { toast } from '../components/ui/Toast';
-import { Plus, Pencil, Archive, ArchiveRestore, UserCheck, Search, Phone, Mail, Calendar, User } from 'lucide-react';
+import { Plus, Pencil, UserCheck, Search, Phone, Mail, Calendar } from 'lucide-react';
 
 export default function PersonsPage() {
   const [persons, setPersons] = useState<PersonResponse[]>([]);
   const [searchPrefix, setSearchPrefix] = useState('');
   const [searched, setSearched] = useState(false);
+  const [groupOptions, setGroupOptions] = useState<ClassProfileGroupItemResponse[]>([]);
+  const [groupFilter, setGroupFilter] = useState<string>('ALL');
+  const [personIdsInGroup, setPersonIdsInGroup] = useState<Set<number> | null>(null);
+  const [genderFilter, setGenderFilter] = useState<'ALL' | 'MALE' | 'FEMALE' | 'UNKNOWN'>('ALL');
+  const [sortBy, setSortBy] = useState<'ID' | 'LAST_NAME'>('ID');
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<PersonResponse | null>(null);
@@ -20,15 +24,36 @@ export default function PersonsPage() {
     residentialAddress: '', documentType: '', documentSeries: '', documentNumber: '', documentIssueDate: '',
     documentIssuedBy: '', documentIdentificationNumber: '', guardianFullName: '', guardianPhone: '', guardianRelation: '',
   });
-  const [archiveTarget, setArchiveTarget] = useState<PersonResponse | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
   const search = async () => {
-    if (!searchPrefix.trim()) return;
     setLoading(true);
     setSearched(true);
     try { const { data } = await personsApi.search(searchPrefix.trim()); setPersons(data); } catch { toast('error', 'Ошибка поиска'); } finally { setLoading(false); }
   };
+
+  useEffect(() => { search(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    classProfilesApi.groups()
+      .then(({ data }) => setGroupOptions(data))
+      .catch(() => setGroupOptions([]));
+  }, []);
+
+  useEffect(() => {
+    if (groupFilter === 'ALL') {
+      setPersonIdsInGroup(null);
+      return;
+    }
+    enrollmentsApi.listByGroup(Number(groupFilter))
+      .then(({ data }) => {
+        const ids = new Set<number>();
+        data.forEach((e) => {
+          if (!e.archived) ids.add(e.studentId);
+        });
+        setPersonIdsInGroup(ids);
+      })
+      .catch(() => setPersonIdsInGroup(new Set<number>()));
+  }, [groupFilter]);
 
   const openCreate = () => {
     setEditing(null);
@@ -92,17 +117,30 @@ export default function PersonsPage() {
       if (editing) { await personsApi.update(editing.id, { ...payload, archived: editing.archived }); toast('success', 'Данные обновлены'); }
       else { await personsApi.create(payload); toast('success', 'Персона добавлена'); }
       setModalOpen(false);
-      if (searchPrefix.trim()) search();
+      search();
     } catch { toast('error', 'Ошибка сохранения'); }
   };
 
-  const confirmArchive = async () => {
-    if (!archiveTarget) return;
-    try { await personsApi.archive(archiveTarget.id, { archived: !archiveTarget.archived }); toast('success', archiveTarget.archived ? 'Восстановлен(а)' : 'Архивирован(а)'); if (searchPrefix.trim()) search(); } catch { toast('error', 'Ошибка'); }
-    setArchiveTarget(null);
-  };
-
   const fullName = (p: PersonResponse) => [p.lastName, p.firstName, p.middleName].filter(Boolean).join(' ');
+  const detectGender = (p: PersonResponse): 'MALE' | 'FEMALE' | 'UNKNOWN' => {
+    const middle = (p.middleName || '').trim().toLowerCase();
+    if (!middle) return 'UNKNOWN';
+    return middle.endsWith('на') ? 'FEMALE' : 'MALE';
+  };
+  const filteredPersons = persons
+    .filter((p) => {
+      if (groupFilter !== 'ALL' && personIdsInGroup && !personIdsInGroup.has(p.id)) return false;
+      if (genderFilter !== 'ALL' && detectGender(p) !== genderFilter) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'LAST_NAME') {
+        const ln = a.lastName.localeCompare(b.lastName, 'ru', { sensitivity: 'base' });
+        if (ln !== 0) return ln;
+        return a.id - b.id;
+      }
+      return a.id - b.id;
+    });
 
   return (
     <div className="space-y-6">
@@ -119,12 +157,42 @@ export default function PersonsPage() {
         </button>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input value={searchPrefix} onChange={(e) => setSearchPrefix(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} placeholder="Поиск по фамилии..." className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" />
         </div>
         <button onClick={search} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 transition-colors">Найти</button>
+        <select
+          value={groupFilter}
+          onChange={(e) => setGroupFilter(e.target.value)}
+          className="px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500"
+        >
+          <option value="ALL">Все группы</option>
+          {groupOptions.map((g) => (
+            <option key={g.groupId} value={g.groupId}>
+              {g.groupName}
+            </option>
+          ))}
+        </select>
+        <select
+          value={genderFilter}
+          onChange={(e) => setGenderFilter(e.target.value as 'ALL' | 'MALE' | 'FEMALE' | 'UNKNOWN')}
+          className="px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500"
+        >
+          <option value="ALL">Любой пол</option>
+          <option value="MALE">Мужской</option>
+          <option value="FEMALE">Женский</option>
+          <option value="UNKNOWN">Не указан</option>
+        </select>
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as 'ID' | 'LAST_NAME')}
+          className="px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500"
+        >
+          <option value="ID">Сортировка: ID</option>
+          <option value="LAST_NAME">Сортировка: Фамилия</option>
+        </select>
         <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
           <button onClick={() => setViewMode('cards')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'cards' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>Карточки</button>
           <button onClick={() => setViewMode('table')} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${viewMode === 'table' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}>Таблица</button>
@@ -133,11 +201,11 @@ export default function PersonsPage() {
 
       {loading ? (
         <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent" /></div>
-      ) : persons.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200"><EmptyState message={searched ? 'Ничего не найдено' : 'Введите фамилию для поиска абитуриентов и слушателей'} /></div>
+      ) : filteredPersons.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200"><EmptyState message={searched ? 'Ничего не найдено' : 'Список пуст'} /></div>
       ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {persons.map((p) => (
+          {filteredPersons.map((p) => (
             <div key={p.id} className={`bg-white rounded-xl border ${p.archived ? 'border-gray-200 opacity-60' : 'border-gray-200'} p-5 hover:shadow-md transition-shadow`}>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
@@ -175,9 +243,6 @@ export default function PersonsPage() {
                   <span className="text-xs text-gray-400">ID: {p.id}</span>
                   <div className="flex items-center gap-1">
                     <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors"><Pencil className="w-4 h-4" /></button>
-                    <button onClick={() => setArchiveTarget(p)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
-                      {p.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
-                    </button>
                   </div>
                 </div>
               </div>
@@ -199,7 +264,7 @@ export default function PersonsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {persons.map((p) => (
+              {filteredPersons.map((p) => (
                 <tr key={p.id} className="hover:bg-gray-50">
                   <td className="py-3 px-4 text-gray-400 font-mono text-xs">{p.id}</td>
                   <td className="py-3 px-4 font-medium text-gray-900">{fullName(p)}</td>
@@ -210,9 +275,6 @@ export default function PersonsPage() {
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => openEdit(p)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"><Pencil className="w-4 h-4" /></button>
-                      <button onClick={() => setArchiveTarget(p)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
-                        {p.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -255,9 +317,6 @@ export default function PersonsPage() {
         </form>
       </Modal>
 
-      {archiveTarget && (
-        <ConfirmDialog open title={archiveTarget.archived ? 'Восстановить?' : 'Архивировать?'} message={`${fullName(archiveTarget)} будет ${archiveTarget.archived ? 'восстановлен(а)' : 'архивирован(а)'}. `} confirmLabel={archiveTarget.archived ? 'Восстановить' : 'Архивировать'} onConfirm={confirmArchive} onCancel={() => setArchiveTarget(null)} />
-      )}
     </div>
   );
 }

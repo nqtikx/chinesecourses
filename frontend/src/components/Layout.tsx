@@ -31,7 +31,7 @@ const navItems: NavItem[] = [
   { to: '/contracts', label: 'Договоры', icon: <FileText className="w-5 h-5" />, roles: ['admin', 'teacher', 'user'] },
   { to: '/persons', label: 'Абитуриенты и слушатели', icon: <UserCheck className="w-5 h-5" />, adminOnly: true, section: 'Контингент' },
   { to: '/teachers', label: 'Преподаватели', icon: <GraduationCap className="w-5 h-5" />, adminOnly: true },
-  { to: '/enrollments', label: 'Зачисления', icon: <ClipboardList className="w-5 h-5" />, section: 'Учёт' },
+  { to: '/enrollments', label: 'Зачисления', icon: <ClipboardList className="w-5 h-5" />, section: 'Учёт', roles: ['admin', 'teacher', 'user'] },
   { to: '/attendance', label: 'Посещаемость', icon: <CheckSquare className="w-5 h-5" /> },
 ];
 

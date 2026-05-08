@@ -4,9 +4,8 @@ import type { TeacherResponse, PersonResponse } from '../types';
 import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
-import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { toast } from '../components/ui/Toast';
-import { Plus, Archive, ArchiveRestore, GraduationCap, Phone, Mail, Search } from 'lucide-react';
+import { Plus, GraduationCap, Phone, Mail, Search } from 'lucide-react';
 
 interface TeacherRow extends TeacherResponse {
   person?: PersonResponse;
@@ -19,7 +18,6 @@ export default function TeachersPage() {
   const [personSearch, setPersonSearch] = useState('');
   const [personResults, setPersonResults] = useState<PersonResponse[]>([]);
   const [selectedPersonId, setSelectedPersonId] = useState('');
-  const [archiveTarget, setArchiveTarget] = useState<TeacherRow | null>(null);
 
   const loadTeachers = async () => {
     setLoading(true);
@@ -65,16 +63,6 @@ export default function TeachersPage() {
     } catch { toast('error', 'Ошибка создания. Возможно, преподаватель уже существует для этой персоны.'); }
   };
 
-  const confirmArchive = async () => {
-    if (!archiveTarget) return;
-    try {
-      await teachersApi.archive(archiveTarget.id, { archived: !archiveTarget.archived });
-      toast('success', archiveTarget.archived ? 'Преподаватель восстановлен' : 'Преподаватель архивирован');
-      loadTeachers();
-    } catch { toast('error', 'Ошибка'); }
-    setArchiveTarget(null);
-  };
-
   const fullName = (p?: PersonResponse) => p ? [p.lastName, p.firstName, p.middleName].filter(Boolean).join(' ') : 'Неизвестно';
 
   return (
@@ -112,9 +100,6 @@ export default function TeachersPage() {
                 </div>
                 <div className="flex items-center gap-1">
                   <Badge variant={t.archived ? 'gray' : 'green'}>{t.archived ? 'Архив' : 'Активен'}</Badge>
-                  <button onClick={() => setArchiveTarget(t)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
-                    {t.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
-                  </button>
                 </div>
               </div>
               {t.person && (
@@ -183,16 +168,6 @@ export default function TeachersPage() {
         </form>
       </Modal>
 
-      {archiveTarget && (
-        <ConfirmDialog
-          open
-          title={archiveTarget.archived ? 'Восстановить?' : 'Архивировать?'}
-          message={`Преподаватель ${fullName(archiveTarget.person)} будет ${archiveTarget.archived ? 'восстановлен' : 'архивирован'}.`}
-          confirmLabel={archiveTarget.archived ? 'Восстановить' : 'Архивировать'}
-          onConfirm={confirmArchive}
-          onCancel={() => setArchiveTarget(null)}
-        />
-      )}
     </div>
   );
 }

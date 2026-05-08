@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { materialsApi } from '../api';
-import type { StudyMaterialResponse } from '../types';
+import { useEffect, useState } from 'react';
+import { classProfilesApi, materialsApi } from '../api';
+import type { ClassProfileGroupItemResponse, StudyMaterialResponse } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { toast } from '../components/ui/Toast';
 import { Upload, Download, Eye } from 'lucide-react';
@@ -9,7 +9,8 @@ import Modal from '../components/ui/Modal';
 const MaterialsPage = () => {
   const { user } = useAuth();
   const canUpload = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_TEACHER';
-  const [groupId, setGroupId] = useState<number>(1);
+  const [groups, setGroups] = useState<ClassProfileGroupItemResponse[]>([]);
+  const [groupId, setGroupId] = useState<number | null>(null);
   const [list, setList] = useState<StudyMaterialResponse[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -17,7 +18,17 @@ const MaterialsPage = () => {
   const [previewType, setPreviewType] = useState<string>('application/octet-stream');
   const [previewName, setPreviewName] = useState<string>('');
 
+  useEffect(() => {
+    classProfilesApi.groups()
+      .then(({ data }) => {
+        setGroups(data);
+        if (data.length > 0) setGroupId(data[0].groupId);
+      })
+      .catch(() => toast('error', 'Не удалось загрузить список групп'));
+  }, []);
+
   const load = async () => {
+    if (!groupId) return;
     try {
       const res = await materialsApi.list(groupId);
       setList(res.data);
@@ -27,7 +38,7 @@ const MaterialsPage = () => {
   };
 
   const upload = async () => {
-    if (!file) return;
+    if (!file || !groupId) return;
     try {
       await materialsApi.upload(groupId, file);
       setFile(null);
@@ -88,13 +99,23 @@ const MaterialsPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-gray-200 p-6 flex items-end gap-3">
-        <div>
-          <label className="block text-sm text-gray-600 mb-1">ID группы</label>
-          <input type="number" value={groupId} onChange={e => setGroupId(Number(e.target.value))}
-                 className="px-3 py-2 rounded-lg border border-gray-300 text-sm w-40"/>
+      <div className="bg-white rounded-xl border border-gray-200 p-6 flex items-end gap-3 flex-wrap">
+        <div className="flex-1 min-w-[280px]">
+          <label className="block text-sm text-gray-600 mb-1">Группа</label>
+          <select
+            value={groupId ?? ''}
+            onChange={(e) => setGroupId(e.target.value ? Number(e.target.value) : null)}
+            className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+          >
+            <option value="">Выберите группу...</option>
+            {groups.map((g) => (
+              <option key={g.groupId} value={g.groupId}>
+                {g.groupName} | {g.courseName} | {g.semesterName} | {g.teacherName}
+              </option>
+            ))}
+          </select>
         </div>
-        <button onClick={load} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm">Показать</button>
+        <button onClick={load} disabled={!groupId} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm disabled:opacity-50">Показать</button>
       </div>
 
       {canUpload && (

@@ -1,12 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { studyGroupsApi, semestersApi, coursesApi, enrollmentsApi, personsApi, teachersApi, lessonSessionsApi } from '../api';
-import type { StudyGroupResponse, SemesterResponse, CourseResponse, EnrollmentResponse, PersonResponse, LessonSessionResponse } from '../types';
+import type { StudyGroupResponse, SemesterResponse, CourseResponse, EnrollmentResponse, LessonSessionResponse, TeacherResponse } from '../types';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
 import { toast } from '../components/ui/Toast';
-import { Plus, Pencil, Archive, ArchiveRestore, Users, ChevronDown, ChevronUp, GraduationCap, UserCheck, Clock, X } from 'lucide-react';
+import { Plus, Pencil, Users, ChevronDown, ChevronUp, GraduationCap, UserCheck, Clock } from 'lucide-react';
 
 interface GroupDetail {
   teacherName: string | null;
@@ -32,6 +32,23 @@ export default function StudyGroupsPage() {
   const [details, setDetails] = useState<Record<number, GroupDetail>>({});
   const [detailLoading, setDetailLoading] = useState<number | null>(null);
   const [teacherNames, setTeacherNames] = useState<Record<number, string>>({});
+  const [teachersList, setTeachersList] = useState<TeacherResponse[]>([]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    teachersApi.list().then(async ({ data }) => {
+      const active = data.filter((t) => !t.archived);
+      setTeachersList(active);
+      const names: Record<number, string> = {};
+      await Promise.all(active.map(async (t) => {
+        try {
+          const { data: p } = await personsApi.get(t.personId);
+          names[t.id] = [p.lastName, p.firstName, p.middleName].filter(Boolean).join(' ');
+        } catch { names[t.id] = `#${t.id}`; }
+      }));
+      setTeacherNames((prev) => ({ ...prev, ...names }));
+    }).catch(() => {});
+  }, [isAdmin]);
 
   useEffect(() => {
     coursesApi.list().then(({ data }) => {
@@ -132,14 +149,6 @@ export default function StudyGroupsPage() {
     } catch { toast('error', 'Ошибка сохранения'); }
   };
 
-  const toggleArchive = async (g: StudyGroupResponse) => {
-    try {
-      await studyGroupsApi.archive(g.id, { archived: !g.archived });
-      toast('success', g.archived ? 'Группа восстановлена' : 'Группа архивирована');
-      reload();
-    } catch { toast('error', 'Ошибка'); }
-  };
-
   const fmtDate = (iso: string) => new Date(iso).toLocaleString('ru', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
   return (
@@ -210,9 +219,6 @@ export default function StudyGroupsPage() {
                     {isAdmin && (
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <button onClick={() => openEdit(g)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><Pencil className="w-4 h-4" /></button>
-                        <button onClick={() => toggleArchive(g)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
-                          {g.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
-                        </button>
                       </div>
                     )}
                     {isExpanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
@@ -301,8 +307,17 @@ export default function StudyGroupsPage() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">ID преподавателя</label>
-            <input value={form.teacherId} onChange={(e) => setForm({ ...form, teacherId: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" placeholder="Необязательно" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Преподаватель</label>
+            <select
+              value={form.teacherId}
+              onChange={(e) => setForm({ ...form, teacherId: e.target.value })}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">Без преподавателя</option>
+              {teachersList.map((t) => (
+                <option key={t.id} value={t.id}>{teacherNames[t.id] || `#${t.id}`}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Заметки по расписанию</label>

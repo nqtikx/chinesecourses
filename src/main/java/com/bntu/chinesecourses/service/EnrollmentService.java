@@ -75,17 +75,6 @@ public class EnrollmentService {
       }
     }
 
-    if (enrollmentRepository.existsByArchivedFalseAndStudentIdAndSemesterId(studentId, semesterId)) {
-      throw new ConflictException(
-          "Enrollment already exists for studentId=" + studentId + " and semesterId=" + semesterId
-      );
-    }
-
-    if (request.status() == EnrollmentStatus.ACTIVE
-        && enrollmentRepository.existsByArchivedFalseAndStudentIdAndStatus(studentId, EnrollmentStatus.ACTIVE)) {
-      throw new ConflictException("Student already has IN_PROGRESS enrollment");
-    }
-
     LocalDate startDate = request.startDate() != null ? request.startDate() : semester.getStartDate();
     LocalDate endDate = semester.getEndDate();
 
@@ -145,12 +134,6 @@ public class EnrollmentService {
 
     SemesterEntity semester = semesterRepository.findById(Objects.requireNonNull(request.semesterId(), "semesterId is required"))
         .orElseThrow(() -> new NotFoundException("Semester not found id=" + request.semesterId()));
-
-    if (request.status() == EnrollmentStatus.ACTIVE
-        && entity.getStatus() != EnrollmentStatus.ACTIVE
-        && enrollmentRepository.existsByArchivedFalseAndStudentIdAndStatus(entity.getStudentId(), EnrollmentStatus.ACTIVE)) {
-      throw new ConflictException("Student already has IN_PROGRESS enrollment");
-    }
 
     entity.setPayerId(request.payerId());
     entity.setSemesterId(request.semesterId());

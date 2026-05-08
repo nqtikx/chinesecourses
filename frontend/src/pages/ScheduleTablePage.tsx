@@ -1,16 +1,27 @@
-import { useState } from 'react';
-import { scheduleTableApi } from '../api';
-import type { GroupScheduleTableResponse } from '../types';
+import { useEffect, useState } from 'react';
+import { classProfilesApi, scheduleTableApi } from '../api';
+import type { ClassProfileGroupItemResponse, GroupScheduleTableResponse } from '../types';
 import { toast } from '../components/ui/Toast';
 import { Download } from 'lucide-react';
 
 const ScheduleTablePage = () => {
-  const [groupId, setGroupId] = useState<number>(1);
+  const [groups, setGroups] = useState<ClassProfileGroupItemResponse[]>([]);
+  const [groupId, setGroupId] = useState<number | null>(null);
   const [weekStart, setWeekStart] = useState<string>(new Date().toISOString().slice(0, 10));
   const [data, setData] = useState<GroupScheduleTableResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    classProfilesApi.groups()
+      .then(({ data }) => {
+        setGroups(data);
+        if (data.length > 0) setGroupId(data[0].groupId);
+      })
+      .catch(() => toast('error', 'Не удалось загрузить список групп'));
+  }, []);
+
   const load = async () => {
+    if (!groupId) return;
     setLoading(true);
     try {
       const res = await scheduleTableApi.get(groupId, weekStart || undefined);
@@ -23,6 +34,7 @@ const ScheduleTablePage = () => {
   };
 
   const exportXlsx = async () => {
+    if (!groupId) return;
     try {
       const res = await scheduleTableApi.exportXlsx(groupId, weekStart || undefined);
       const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -41,19 +53,29 @@ const ScheduleTablePage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-gray-200 p-6 flex gap-3 items-end">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 flex gap-3 items-end flex-wrap">
         <div>
           <label className="block text-sm text-gray-600 mb-1">Начало недели</label>
           <input type="date" value={weekStart} onChange={(e) => setWeekStart(e.target.value)}
                  className="px-3 py-2 rounded-lg border border-gray-300 text-sm w-44" />
         </div>
-        <div>
-          <label className="block text-sm text-gray-600 mb-1">ID группы</label>
-          <input type="number" value={groupId} onChange={(e) => setGroupId(Number(e.target.value))}
-                 className="px-3 py-2 rounded-lg border border-gray-300 text-sm w-40" />
+        <div className="flex-1 min-w-[280px]">
+          <label className="block text-sm text-gray-600 mb-1">Группа</label>
+          <select
+            value={groupId ?? ''}
+            onChange={(e) => setGroupId(e.target.value ? Number(e.target.value) : null)}
+            className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+          >
+            <option value="">Выберите группу...</option>
+            {groups.map((g) => (
+              <option key={g.groupId} value={g.groupId}>
+                {g.groupName} | {g.courseName} | {g.semesterName} | {g.teacherName}
+              </option>
+            ))}
+          </select>
         </div>
-        <button onClick={load} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm">Показать</button>
-        <button onClick={exportXlsx} className="px-4 py-2 border rounded-lg text-sm inline-flex items-center gap-2">
+        <button onClick={load} disabled={!groupId} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm disabled:opacity-50">Показать</button>
+        <button onClick={exportXlsx} disabled={!groupId} className="px-4 py-2 border rounded-lg text-sm inline-flex items-center gap-2 disabled:opacity-50">
           <Download className="w-4 h-4" /> Export XLSX
         </button>
       </div>

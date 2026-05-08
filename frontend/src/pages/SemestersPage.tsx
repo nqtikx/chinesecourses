@@ -5,9 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
-import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { toast } from '../components/ui/Toast';
-import { Plus, Pencil, Archive, ArchiveRestore, Calendar } from 'lucide-react';
+import { Plus, Pencil, Calendar } from 'lucide-react';
 
 export default function SemestersPage() {
   const { isAdmin } = useAuth();
@@ -18,7 +17,6 @@ export default function SemestersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<SemesterResponse | null>(null);
   const [form, setForm] = useState({ courseId: 0, name: '', startDate: '', endDate: '' });
-  const [archiveTarget, setArchiveTarget] = useState<SemesterResponse | null>(null);
 
   useEffect(() => { coursesApi.list().then(({ data }) => { setCourses(data); if (data.length) setSelectedCourse(data[0].id); }); }, []);
 
@@ -42,12 +40,6 @@ export default function SemestersPage() {
       else { await semestersApi.create(form); toast('success', 'Семестр создан'); }
       setModalOpen(false); reload();
     } catch { toast('error', 'Ошибка сохранения'); }
-  };
-
-  const confirmArchive = async () => {
-    if (!archiveTarget) return;
-    try { await semestersApi.archive(archiveTarget.id, { archived: !archiveTarget.archived }); toast('success', archiveTarget.archived ? 'Восстановлен' : 'Архивирован'); reload(); } catch { toast('error', 'Ошибка'); }
-    setArchiveTarget(null);
   };
 
   return (
@@ -103,9 +95,6 @@ export default function SemestersPage() {
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"><Pencil className="w-4 h-4" /></button>
-                        <button onClick={() => setArchiveTarget(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors">
-                          {s.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
-                        </button>
                       </div>
                     </td>
                   )}
@@ -145,7 +134,6 @@ export default function SemestersPage() {
         </form>
       </Modal>
 
-      <ConfirmDialog open={!!archiveTarget} title={archiveTarget?.archived ? 'Восстановить?' : 'Архивировать?'} message={`Семестр «${archiveTarget?.name}» будет ${archiveTarget?.archived ? 'восстановлен' : 'архивирован'}.`} confirmLabel={archiveTarget?.archived ? 'Восстановить' : 'Архивировать'} onConfirm={confirmArchive} onCancel={() => setArchiveTarget(null)} />
     </div>
   );
 }

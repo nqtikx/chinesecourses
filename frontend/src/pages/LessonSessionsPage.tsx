@@ -6,7 +6,7 @@ import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
 import { toast } from '../components/ui/Toast';
-import { Plus, Pencil, Archive, ArchiveRestore, Clock, CalendarDays, MapPin, GraduationCap, XCircle, CheckCircle } from 'lucide-react';
+import { Plus, Pencil, Clock, CalendarDays, MapPin, GraduationCap, XCircle, CheckCircle } from 'lucide-react';
 
 export default function LessonSessionsPage() {
   const { isAdmin, isTeacher } = useAuth();
@@ -25,7 +25,6 @@ export default function LessonSessionsPage() {
     groupId: 0, teacherId: '', startsAt: '', endsAt: '', actualStartsAt: '', actualEndsAt: '', topic: '', room: '',
   });
   const [teacherNames, setTeacherNames] = useState<Record<number, string>>({});
-  const [showArchivedOnly, setShowArchivedOnly] = useState(false);
 
   useEffect(() => { coursesApi.list().then(({ data }) => { setCourses(data); if (data.length) setSelectedCourse(data[0].id); }); }, []);
 
@@ -51,12 +50,12 @@ export default function LessonSessionsPage() {
   useEffect(() => {
     if (selectedGroup) {
       setLoading(true);
-      lessonSessionsApi.listByGroup(selectedGroup, showArchivedOnly).then(({ data }) => {
+      lessonSessionsApi.listByGroup(selectedGroup).then(({ data }) => {
         const sorted = [...data].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
         setSessions(sorted);
       }).finally(() => setLoading(false));
     } else { setSessions([]); }
-  }, [selectedGroup, showArchivedOnly]);
+  }, [selectedGroup]);
 
   const resolveTeacherNames = async (grps: StudyGroupResponse[]) => {
     const tIds = [...new Set(grps.map(g => g.teacherId).filter(Boolean))] as number[];
@@ -73,7 +72,7 @@ export default function LessonSessionsPage() {
 
   const reload = async () => {
     if (selectedGroup) {
-      const { data } = await lessonSessionsApi.listByGroup(selectedGroup, showArchivedOnly);
+      const { data } = await lessonSessionsApi.listByGroup(selectedGroup);
       const sorted = [...data].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
       setSessions(sorted);
     }
@@ -130,14 +129,6 @@ export default function LessonSessionsPage() {
     } catch { toast('error', 'Ошибка сохранения'); }
   };
 
-  const toggleArchive = async (s: LessonSessionResponse) => {
-    try {
-      await lessonSessionsApi.archive(s.id, { archived: !s.archived });
-      toast('success', s.archived ? 'Занятие восстановлено' : 'Занятие архивировано');
-      reload();
-    } catch { toast('error', 'Ошибка'); }
-  };
-
   const toggleCancel = async (s: LessonSessionResponse) => {
     try {
       await lessonSessionsApi.patchStatus(s.id, {
@@ -157,9 +148,7 @@ export default function LessonSessionsPage() {
   const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
 
   const groupedByDate: Record<string, LessonSessionResponse[]> = {};
-  const visibleSessions = showArchivedOnly
-    ? sessions.filter((s) => s.archived)
-    : sessions.filter((s) => !s.archived);
+  const visibleSessions = sessions.filter((s) => !s.archived);
   visibleSessions.forEach(s => {
     const key = fmtDate(s.startsAt);
     if (!groupedByDate[key]) groupedByDate[key] = [];
@@ -184,7 +173,7 @@ export default function LessonSessionsPage() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Курс</label>
             <select value={selectedCourse || ''} onChange={(e) => setSelectedCourse(Number(e.target.value))} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500">
@@ -203,19 +192,6 @@ export default function LessonSessionsPage() {
               {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
             </select>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Архив</label>
-            <button
-              onClick={() => setShowArchivedOnly((v) => !v)}
-              className={`w-full px-3 py-2 rounded-lg border text-sm transition-colors ${
-                showArchivedOnly
-                  ? 'border-amber-300 bg-amber-50 text-amber-700'
-                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {showArchivedOnly ? 'Показывать только архивные' : 'Скрыть архивные'}
-            </button>
-          </div>
         </div>
       </div>
 
@@ -223,7 +199,7 @@ export default function LessonSessionsPage() {
         <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent" /></div>
       ) : visibleSessions.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200">
-          <EmptyState message={showArchivedOnly ? 'Архивные занятия не найдены для выбранной группы' : 'Активные занятия не найдены для выбранной группы'} />
+          <EmptyState message="Активные занятия не найдены для выбранной группы" />
         </div>
       ) : (
         <div className="space-y-4">
@@ -262,17 +238,12 @@ export default function LessonSessionsPage() {
                         {s.canceled ? <Badge variant="red">Отменено</Badge> : s.archived ? <Badge variant="gray">Архив</Badge> : <Badge variant="green">Активно</Badge>}
                         {canManageStatus && (
                           <div className="flex items-center gap-1 ml-2">
-                            {isAdmin && (
+                            {canManageStatus && (
                               <button onClick={() => openEdit(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title="Редактировать"><Pencil className="w-4 h-4" /></button>
                             )}
                             <button onClick={() => toggleCancel(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title={s.canceled ? 'Возобновить' : 'Отменить'}>
                               {s.canceled ? <CheckCircle className="w-4 h-4 text-emerald-500" /> : <XCircle className="w-4 h-4 text-red-400" />}
                             </button>
-                            {isAdmin && (
-                              <button onClick={() => toggleArchive(s)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title={s.archived ? 'Восстановить' : 'Архивировать'}>
-                                {s.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
-                              </button>
-                            )}
                           </div>
                         )}
                       </div>

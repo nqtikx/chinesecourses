@@ -5,7 +5,7 @@ import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
 import { toast } from '../components/ui/Toast';
-import { Plus, Pencil, Archive, ArchiveRestore, CalendarClock, Clock, MapPin, Power, PowerOff } from 'lucide-react';
+import { Plus, Pencil, CalendarClock, Clock, MapPin, Power, PowerOff } from 'lucide-react';
 
 const DAYS = ['', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 const DAY_SHORT = ['', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -85,14 +85,6 @@ export default function ScheduleRulesPage() {
       setModalOpen(false);
       reload();
     } catch { toast('error', 'Ошибка сохранения'); }
-  };
-
-  const toggleArchive = async (r: GroupScheduleRuleResponse) => {
-    try {
-      await scheduleRulesApi.archive(r.id, { archived: !r.archived });
-      toast('success', r.archived ? 'Правило восстановлено' : 'Правило архивировано');
-      reload();
-    } catch { toast('error', 'Ошибка'); }
   };
 
   const toggleActive = async (r: GroupScheduleRuleResponse) => {
@@ -212,9 +204,6 @@ export default function ScheduleRulesPage() {
                       {r.active ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4 text-emerald-500" />}
                     </button>
                     <button onClick={() => openEdit(r)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><Pencil className="w-4 h-4" /></button>
-                    <button onClick={() => toggleArchive(r)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
-                      {r.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
-                    </button>
                   </div>
                 </div>
               ))}

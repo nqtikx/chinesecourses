@@ -5,9 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
 import EmptyState from '../components/ui/EmptyState';
-import ConfirmDialog from '../components/ui/ConfirmDialog';
 import { toast } from '../components/ui/Toast';
-import { Plus, Pencil, Archive, ArchiveRestore, BookOpen, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Pencil, BookOpen, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function CoursesPage() {
@@ -19,7 +18,6 @@ export default function CoursesPage() {
   const [editing, setEditing] = useState<CourseResponse | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [archiveTarget, setArchiveTarget] = useState<CourseResponse | null>(null);
   const [semesterCounts, setSemesterCounts] = useState<Record<number, number>>({});
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null);
   const [courseSemesters, setCourseSemesters] = useState<Record<number, SemesterResponse[]>>({});
@@ -72,16 +70,6 @@ export default function CoursesPage() {
     } catch { toast('error', 'Ошибка сохранения'); }
   };
 
-  const confirmArchive = async () => {
-    if (!archiveTarget) return;
-    try {
-      await coursesApi.archive(archiveTarget.id, { archived: !archiveTarget.archived });
-      toast('success', archiveTarget.archived ? 'Курс восстановлен' : 'Курс архивирован');
-      load();
-    } catch { toast('error', 'Ошибка'); }
-    setArchiveTarget(null);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -127,9 +115,6 @@ export default function CoursesPage() {
                     {isAdmin && (
                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><Pencil className="w-4 h-4" /></button>
-                        <button onClick={() => setArchiveTarget(c)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
-                          {c.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
-                        </button>
                       </div>
                     )}
                   </div>
@@ -197,18 +182,6 @@ export default function CoursesPage() {
         </form>
       </Modal>
 
-      {archiveTarget && (
-        <ConfirmDialog
-          open
-          title={archiveTarget.archived ? 'Восстановить курс?' : 'Архивировать курс?'}
-          message={archiveTarget.archived
-            ? `Курс «${archiveTarget.name}» будет восстановлен из архива.`
-            : `Курс «${archiveTarget.name}» будет перемещён в архив.`}
-          confirmLabel={archiveTarget.archived ? 'Восстановить' : 'Архивировать'}
-          onConfirm={confirmArchive}
-          onCancel={() => setArchiveTarget(null)}
-        />
-      )}
     </div>
   );
 }
