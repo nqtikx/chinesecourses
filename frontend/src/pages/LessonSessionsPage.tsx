@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { lessonSessionsApi, studyGroupsApi, semestersApi, coursesApi, teachersApi, personsApi } from '../api';
-import type { LessonSessionResponse, StudyGroupResponse, SemesterResponse, CourseResponse } from '../types';
+import type { LessonSessionResponse, StudyGroupResponse, SemesterResponse, CourseResponse, TeacherResponse } from '../types';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
@@ -25,8 +25,29 @@ export default function LessonSessionsPage() {
     groupId: 0, teacherId: '', startsAt: '', endsAt: '', actualStartsAt: '', actualEndsAt: '', topic: '', room: '',
   });
   const [teacherNames, setTeacherNames] = useState<Record<number, string>>({});
+  const [teachersList, setTeachersList] = useState<TeacherResponse[]>([]);
 
   useEffect(() => { coursesApi.list().then(({ data }) => { setCourses(data); if (data.length) setSelectedCourse(data[0].id); }); }, []);
+  useEffect(() => {
+    teachersApi.list().then(async ({ data }) => {
+      const active = data.filter((t) => !t.archived);
+      setTeachersList(active);
+      const names: Record<number, string> = {};
+      await Promise.all(active.map(async (t) => {
+        if (t.fullName) {
+          names[t.id] = t.fullName;
+          return;
+        }
+        try {
+          const { data: p } = await personsApi.get(t.personId);
+          names[t.id] = [p.lastName, p.firstName, p.middleName].filter(Boolean).join(' ');
+        } catch {
+          names[t.id] = `#${t.id}`;
+        }
+      }));
+      setTeacherNames((prev) => ({ ...prev, ...names }));
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (selectedCourse) {
@@ -275,8 +296,17 @@ export default function LessonSessionsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Преподаватель (ID)</label>
-              <input value={form.teacherId} onChange={(e) => setForm({ ...form, teacherId: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500" placeholder="Авто из группы" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Преподаватель</label>
+              <select
+                value={form.teacherId}
+                onChange={(e) => setForm({ ...form, teacherId: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">Без преподавателя</option>
+                {teachersList.map((t) => (
+                  <option key={t.id} value={t.id}>{teacherNames[t.id] || 'Преподаватель'}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
