@@ -1,0 +1,75 @@
+databaseChangeLog:
+  - changeSet:
+      id: 050-admin-user-person-id
+      author: chinesecourses
+      changes:
+        - addColumn:
+            tableName: admin_user
+            columns:
+              - column:
+                  name: person_id
+                  type: bigint
+        - addForeignKeyConstraint:
+            baseTableName: admin_user
+            baseColumnNames: person_id
+            referencedTableName: person
+            referencedColumnNames: id
+            constraintName: fk_admin_user_person
+
+  - changeSet:
+      id: 050-enrollment-period-contract
+      author: chinesecourses
+      changes:
+        - addColumn:
+            tableName: enrollment
+            columns:
+              - column:
+                  name: start_date
+                  type: date
+              - column:
+                  name: end_date
+                  type: date
+              - column:
+                  name: contract_number
+                  type: varchar(64)
+        - createIndex:
+            tableName: enrollment
+            indexName: ix_enrollment_start_date
+            columns:
+              - column:
+                  name: start_date
+        - createIndex:
+            tableName: enrollment
+            indexName: ix_enrollment_end_date
+            columns:
+              - column:
+                  name: end_date
+        - addUniqueConstraint:
+            tableName: enrollment
+            columnNames: contract_number
+            constraintName: ux_enrollment_contract_number
+
+  - changeSet:
+      id: 050-seed-role-user
+      author: chinesecourses
+      changes:
+        - sql:
+            sql: >
+              INSERT INTO admin_user (username, password_hash, role, person_id, created_at)
+              VALUES (
+                'student',
+                '$2b$10$RMlSEXxFi3ACoUTMvgXl6uKGDgxuL41l6GI9QXLvwkmKMXyZDD6Ue',
+                'ROLE_USER',
+                (SELECT id FROM person WHERE email='ivanov.p@example.com'),
+                now()
+              )
+              ON CONFLICT (username) DO NOTHING
+
+  - changeSet:
+      id: 050-fill-enrollment-start-date
+      author: chinesecourses
+      changes:
+        - sql:
+            sql: >
+              UPDATE enrollment
+              SET start_date = COALESCE(start_date, created_at::date)

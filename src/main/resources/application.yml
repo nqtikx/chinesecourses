@@ -1,11 +1,22 @@
 spring:
-  application:
-    name: chinesecourses-admin
   profiles:
-    default: local
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
+    active: local
+security:
+  jwt:
+    secret: ${JWT_SECRET}
+    issuer: ${JWT_ISSUER:chinesecourses}
+    access-token-ttl: ${JWT_ACCESS_TTL:PT30M}
+app:
+  storage:
+    base-dir: ${APP_STORAGE_BASE_DIR:data/storage}
+    materials-dir: ${APP_STORAGE_MATERIALS_DIR:materials}
+    contracts-dir: ${APP_STORAGE_CONTRACTS_DIR:contracts}
+    # Absolute or relative path to the directory with .docx contract templates.
+    # Set APP_STORAGE_TEMPLATES_DIR in environment for production (e.g. a mounted volume).
+    templates-dir: ${APP_STORAGE_TEMPLATES_DIR:}
+  contracts:
+    repeat-discount-percent: ${APP_CONTRACT_REPEAT_DISCOUNT_PERCENT:10}
+    discount-growth-percentages: ${APP_CONTRACT_DISCOUNT_GROWTH_PERCENTAGES:0,5,10,15,20}
+    base-price: ${APP_CONTRACT_BASE_PRICE:1200}
+  group-account:
+    default-password: ${APP_GROUP_ACCOUNT_DEFAULT_PASSWORD:admin}

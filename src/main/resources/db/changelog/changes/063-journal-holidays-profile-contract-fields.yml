@@ -1,0 +1,192 @@
+databaseChangeLog:
+  - changeSet:
+      id: 063-lesson-session-planned-fact-status-dates
+      author: chinesecourses
+      changes:
+        - addColumn:
+            tableName: lesson_session
+            columns:
+              - column:
+                  name: actual_starts_at
+                  type: timestamp with time zone
+              - column:
+                  name: actual_ends_at
+                  type: timestamp with time zone
+              - column:
+                  name: status_marked_at
+                  type: timestamp with time zone
+              - column:
+                  name: status_approved_at
+                  type: timestamp with time zone
+              - column:
+                  name: status_approved_by
+                  type: bigint
+        - addForeignKeyConstraint:
+            baseTableName: lesson_session
+            baseColumnNames: status_approved_by
+            referencedTableName: admin_user
+            referencedColumnNames: id
+            constraintName: fk_lesson_status_approved_by
+            onDelete: set null
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: >
+              ALTER TABLE lesson_session
+              ADD CONSTRAINT ck_lesson_actual_time
+              CHECK (
+                (actual_starts_at IS NULL AND actual_ends_at IS NULL)
+                OR (actual_starts_at IS NOT NULL AND actual_ends_at IS NOT NULL AND actual_starts_at < actual_ends_at)
+              );
+        - createIndex:
+            tableName: lesson_session
+            indexName: ix_lesson_actual_starts_at
+            columns:
+              - column:
+                  name: actual_starts_at
+
+  - changeSet:
+      id: 063-create-academic-holiday
+      author: chinesecourses
+      changes:
+        - createTable:
+            tableName: academic_holiday
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: holiday_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: title
+                  type: varchar(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: no_classes
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: "now()"
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: academic_holiday
+            columnNames: holiday_date
+            constraintName: ux_academic_holiday_date
+        - createIndex:
+            tableName: academic_holiday
+            indexName: ix_academic_holiday_archived_date
+            columns:
+              - column:
+                  name: archived
+              - column:
+                  name: holiday_date
+
+  - changeSet:
+      id: 063-person-contract-fields
+      author: chinesecourses
+      changes:
+        - addColumn:
+            tableName: person
+            columns:
+              - column:
+                  name: residential_address
+                  type: varchar(512)
+              - column:
+                  name: document_type
+                  type: varchar(128)
+              - column:
+                  name: document_series
+                  type: varchar(64)
+              - column:
+                  name: document_number
+                  type: varchar(64)
+              - column:
+                  name: document_issue_date
+                  type: date
+              - column:
+                  name: document_issued_by
+                  type: varchar(512)
+              - column:
+                  name: document_identification_number
+                  type: varchar(128)
+
+  - changeSet:
+      id: 063-create-person-guardian
+      author: chinesecourses
+      changes:
+        - createTable:
+            tableName: person_guardian
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: child_person_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: full_name
+                  type: varchar(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: phone
+                  type: varchar(32)
+              - column:
+                  name: relation_type
+                  type: varchar(64)
+              - column:
+                  name: primary_guardian
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: "now()"
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: person_guardian
+            baseColumnNames: child_person_id
+            referencedTableName: person
+            referencedColumnNames: id
+            constraintName: fk_person_guardian_child
+            onDelete: cascade
+        - createIndex:
+            tableName: person_guardian
+            indexName: ix_person_guardian_child
+            columns:
+              - column:
+                  name: child_person_id

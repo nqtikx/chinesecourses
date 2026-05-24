@@ -1,0 +1,268 @@
+databaseChangeLog:
+  - changeSet:
+      id: 070-seed-extra-persons
+      author: chinesecourses
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO person (last_name, first_name, middle_name, birth_date, phone, email, archived, created_at)
+              VALUES
+                ('Смирнов', 'Кирилл', 'Олегович', '2012-08-19', '+375291010010', 'smirnov.k@example.com', false, now()),
+                ('Смирнова', 'Ольга', 'Викторовна', '1987-05-02', '+375291010011', 'smirnova.ov@example.com', false, now()),
+                ('Орлова', 'Екатерина', 'Сергеевна', '2011-12-03', '+375291010012', 'orlova.e@example.com', false, now()),
+                ('Орлов', 'Сергей', 'Андреевич', '1984-07-14', '+375291010013', 'orlov.s@example.com', false, now()),
+                ('Чэнь', 'Линь', '', '1992-10-11', '+375291010014', 'chen.lin@example.com', false, now()),
+                ('Морозова', 'Людмила', 'Павловна', '2004-02-20', '+375291010015', 'morozova.l@example.com', false, now()),
+                ('Ким', 'Юна', '', '2005-09-09', '+375291010016', 'kim.yuna@example.com', false, now()),
+                ('Громов', 'Илья', 'Денисович', '2003-03-27', '+375291010017', 'gromov.i@example.com', false, now())
+              ON CONFLICT (email) DO NOTHING;
+
+  - changeSet:
+      id: 070-seed-extra-teachers-and-users
+      author: chinesecourses
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO teacher (id, archived, created_at)
+              SELECT p.id, false, now()
+              FROM person p
+              WHERE p.email = 'chen.lin@example.com'
+              ON CONFLICT (id) DO NOTHING;
+
+              INSERT INTO admin_user (username, password_hash, role, teacher_id, person_id, created_at)
+              SELECT 'teacher_zhang',
+                     '$2b$10$RMlSEXxFi3ACoUTMvgXl6uKGDgxuL41l6GI9QXLvwkmKMXyZDD6Ue',
+                     'ROLE_TEACHER',
+                     p.id,
+                     p.id,
+                     now()
+              FROM person p
+              WHERE p.email = 'zhang.wei@example.com'
+              ON CONFLICT (username) DO NOTHING;
+
+              INSERT INTO admin_user (username, password_hash, role, teacher_id, person_id, created_at)
+              SELECT 'teacher_chen',
+                     '$2b$10$RMlSEXxFi3ACoUTMvgXl6uKGDgxuL41l6GI9QXLvwkmKMXyZDD6Ue',
+                     'ROLE_TEACHER',
+                     p.id,
+                     p.id,
+                     now()
+              FROM person p
+              WHERE p.email = 'chen.lin@example.com'
+              ON CONFLICT (username) DO NOTHING;
+
+              INSERT INTO admin_user (username, password_hash, role, person_id, created_at)
+              SELECT u.username,
+                     '$2b$10$RMlSEXxFi3ACoUTMvgXl6uKGDgxuL41l6GI9QXLvwkmKMXyZDD6Ue',
+                     'ROLE_USER',
+                     p.id,
+                     now()
+              FROM (
+                VALUES
+                  ('student_kozlova', 'kozlova.a@example.com'),
+                  ('student_petrova', 'petrova.m@example.com'),
+                  ('student_sidorov', 'sidorov.a@example.com'),
+                  ('student_smirnov', 'smirnov.k@example.com'),
+                  ('student_orlova', 'orlova.e@example.com'),
+                  ('student_morozova', 'morozova.l@example.com'),
+                  ('student_kim', 'kim.yuna@example.com'),
+                  ('student_gromov', 'gromov.i@example.com')
+              ) AS u(username, email)
+              JOIN person p ON p.email = u.email
+              ON CONFLICT (username) DO NOTHING;
+
+  - changeSet:
+      id: 070-seed-extra-courses-semesters-groups
+      author: chinesecourses
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO course (name, description, archived, created_at)
+              VALUES ('Технический китайский язык', 'Курс для студентов технических специальностей: терминология, документация, деловая переписка.', false, now())
+              ON CONFLICT (name) DO NOTHING;
+
+              INSERT INTO semester (course_id, name, start_date, end_date, archived, created_at)
+              SELECT c.id, v.semester_name, v.start_date, v.end_date, false, now()
+              FROM (
+                VALUES
+                  ('Базовый курс HSK1', 'Осень 2025', DATE '2025-09-15', DATE '2026-01-12'),
+                  ('Продвинутый курс HSK3', 'Осень 2025', DATE '2025-09-15', DATE '2026-01-12'),
+                  ('Технический китайский язык', 'Весна 2026', DATE '2026-02-01', DATE '2026-06-30')
+              ) AS v(course_name, semester_name, start_date, end_date)
+              JOIN course c ON c.name = v.course_name
+              ON CONFLICT (course_id, name) DO NOTHING;
+
+              INSERT INTO study_group (semester_id, teacher_id, name, schedule_notes, archived, created_at)
+              SELECT s.id, t.id, v.group_name, v.schedule_notes, false, now()
+              FROM (
+                VALUES
+                  ('Базовый курс HSK1', 'Весна 2026', 'Группа A-3', 'Детская группа: упор на разговорную практику.', 'chen.lin@example.com'),
+                  ('Базовый курс HSK1', 'Осень 2025', 'Группа B-1', 'Архивная группа прошлого семестра.', 'li.meilin@example.com'),
+                  ('Продвинутый курс HSK3', 'Осень 2025', 'Группа HSK3-B1', 'Архивная интенсивная группа HSK3.', 'zhang.wei@example.com'),
+                  ('Продвинутый курс HSK3', 'Весна 2026', 'Группа HSK3-C1', 'Интенсив: чтение и устная практика.', 'zhang.wei@example.com'),
+                  ('Технический китайский язык', 'Весна 2026', 'Группа T-1', 'Техническая лексика и профильные кейсы.', 'chen.lin@example.com')
+              ) AS v(course_name, semester_name, group_name, schedule_notes, teacher_email)
+              JOIN course c ON c.name = v.course_name
+              JOIN semester s ON s.course_id = c.id AND s.name = v.semester_name
+              JOIN person t ON t.email = v.teacher_email
+              ON CONFLICT (semester_id, name) DO NOTHING;
+
+  - changeSet:
+      id: 070-seed-extra-enrollments
+      author: chinesecourses
+      changes:
+        - sql:
+            sql: |
+              UPDATE enrollment e
+              SET start_date = COALESCE(e.start_date, s.start_date),
+                  contract_number = COALESCE(e.contract_number, 'CNT-2026-' || LPAD(e.id::text, 4, '0'))
+              FROM semester s
+              WHERE s.id = e.semester_id;
+
+              INSERT INTO enrollment (student_id, payer_id, semester_id, group_id, status, level, start_date, end_date, contract_number, archived, created_at)
+              SELECT p_student.id,
+                     p_payer.id,
+                     s.id,
+                     sg.id,
+                     v.status,
+                     v.level,
+                     v.start_date,
+                     v.end_date,
+                     v.contract_number,
+                     false,
+                     now()
+              FROM (
+                VALUES
+                  ('ivanov.p@example.com', 'ivanov.p@example.com', 'Базовый курс HSK1', 'Осень 2025', 'Группа B-1', 'COMPLETED', 'HSK1', DATE '2025-09-15', DATE '2026-01-12', 'CNT-2025-0001'),
+                  ('kozlova.a@example.com', 'kozlova.a@example.com', 'Базовый курс HSK1', 'Осень 2025', 'Группа B-1', 'COMPLETED', 'HSK1', DATE '2025-09-15', DATE '2026-01-12', 'CNT-2025-0002'),
+                  ('petrova.m@example.com', 'petrova.m@example.com', 'Базовый курс HSK1', 'Осень 2025', 'Группа B-1', 'COMPLETED', 'HSK1', DATE '2025-09-15', DATE '2026-01-12', 'CNT-2025-0003'),
+                  ('sidorov.a@example.com', 'sidorov.a@example.com', 'Продвинутый курс HSK3', 'Осень 2025', 'Группа HSK3-B1', 'COMPLETED', 'HSK3', DATE '2025-09-15', DATE '2026-01-12', 'CNT-2025-0004'),
+                  ('smirnov.k@example.com', 'smirnova.ov@example.com', 'Базовый курс HSK1', 'Весна 2026', 'Группа A-3', 'ACTIVE', 'HSK1', DATE '2026-02-01', NULL, 'CNT-2026-0101'),
+                  ('orlova.e@example.com', 'orlov.s@example.com', 'Базовый курс HSK1', 'Весна 2026', 'Группа A-3', 'ACTIVE', 'HSK1', DATE '2026-02-01', NULL, 'CNT-2026-0102'),
+                  ('morozova.l@example.com', 'morozova.l@example.com', 'Технический китайский язык', 'Весна 2026', 'Группа T-1', 'ACTIVE', 'HSK3', DATE '2026-02-05', NULL, 'CNT-2026-0103'),
+                  ('kim.yuna@example.com', 'kim.yuna@example.com', 'Технический китайский язык', 'Весна 2026', 'Группа T-1', 'ACTIVE', 'HSK3', DATE '2026-02-05', NULL, 'CNT-2026-0104'),
+                  ('gromov.i@example.com', 'gromov.i@example.com', 'Продвинутый курс HSK3', 'Весна 2026', 'Группа HSK3-C1', 'ACTIVE', 'HSK3', DATE '2026-02-01', NULL, 'CNT-2026-0105')
+              ) AS v(student_email, payer_email, course_name, semester_name, group_name, status, level, start_date, end_date, contract_number)
+              JOIN person p_student ON p_student.email = v.student_email
+              JOIN person p_payer ON p_payer.email = v.payer_email
+              JOIN course c ON c.name = v.course_name
+              JOIN semester s ON s.course_id = c.id AND s.name = v.semester_name
+              JOIN study_group sg ON sg.semester_id = s.id AND sg.name = v.group_name
+              WHERE NOT EXISTS (
+                SELECT 1
+                FROM enrollment e
+                WHERE e.student_id = p_student.id
+                  AND e.semester_id = s.id
+                  AND e.archived = false
+              );
+
+  - changeSet:
+      id: 070-seed-schedule-and-lessons
+      author: chinesecourses
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO group_schedule_rule (group_id, day_of_week, start_time, end_time, room, active, archived, created_at)
+              SELECT sg.id, v.day_of_week, v.start_time, v.end_time, v.room, true, false, now()
+              FROM (
+                VALUES
+                  ('Группа A-3', 1, TIME '16:00', TIME '17:30', 'Ауд. 210'),
+                  ('Группа A-3', 3, TIME '16:00', TIME '17:30', 'Ауд. 210'),
+                  ('Группа A-3', 6, TIME '10:00', TIME '11:30', 'Онлайн / Zoom'),
+                  ('Группа T-1', 2, TIME '18:00', TIME '19:30', 'Ауд. 510'),
+                  ('Группа T-1', 4, TIME '18:00', TIME '19:30', 'Ауд. 510'),
+                  ('Группа HSK3-C1', 2, TIME '09:00', TIME '10:30', 'Ауд. 401'),
+                  ('Группа HSK3-C1', 5, TIME '09:00', TIME '10:30', 'Ауд. 401')
+              ) AS v(group_name, day_of_week, start_time, end_time, room)
+              JOIN study_group sg ON sg.name = v.group_name
+              WHERE NOT EXISTS (
+                SELECT 1
+                FROM group_schedule_rule gsr
+                WHERE gsr.group_id = sg.id
+                  AND gsr.day_of_week = v.day_of_week
+                  AND gsr.start_time = v.start_time
+                  AND gsr.end_time = v.end_time
+                  AND gsr.archived = false
+              );
+
+              INSERT INTO lesson_session (
+                group_id, teacher_id, starts_at, ends_at, actual_starts_at, actual_ends_at,
+                status_marked_at, status_approved_at, status_approved_by, topic, room, canceled, archived, created_at
+              )
+              SELECT sg.id,
+                     teacher_person.id,
+                     v.starts_at,
+                     v.ends_at,
+                     v.actual_starts_at,
+                     v.actual_ends_at,
+                     v.status_marked_at,
+                     v.status_approved_at,
+                     approver.id,
+                     v.topic,
+                     v.room,
+                     v.canceled,
+                     v.archived,
+                     now()
+              FROM (
+                VALUES
+                  ('Группа A-1', 'li.meilin@example.com', TIMESTAMPTZ '2026-02-16 09:00:00+03', TIMESTAMPTZ '2026-02-16 10:30:00+03', TIMESTAMPTZ '2026-02-16 09:03:00+03', TIMESTAMPTZ '2026-02-16 10:33:00+03', TIMESTAMPTZ '2026-02-16 10:35:00+03', TIMESTAMPTZ '2026-02-16 12:00:00+03', 'admin', 'Еда и напитки', 'Ауд. 301', false, false),
+                  ('Группа A-1', 'li.meilin@example.com', TIMESTAMPTZ '2026-02-18 09:00:00+03', TIMESTAMPTZ '2026-02-18 10:30:00+03', TIMESTAMPTZ '2026-02-18 09:01:00+03', TIMESTAMPTZ '2026-02-18 10:31:00+03', TIMESTAMPTZ '2026-02-18 10:40:00+03', TIMESTAMPTZ '2026-02-18 12:10:00+03', 'admin', 'Покупки и деньги', 'Ауд. 301', false, false),
+                  ('Группа A-1', 'li.meilin@example.com', TIMESTAMPTZ '2026-02-20 14:00:00+03', TIMESTAMPTZ '2026-02-20 15:30:00+03', NULL, NULL, TIMESTAMPTZ '2026-02-20 13:00:00+03', NULL, NULL, 'Практика аудирования', 'Ауд. 205', true, true),
+                  ('Группа A-2', 'zhang.wei@example.com', TIMESTAMPTZ '2026-02-17 11:00:00+03', TIMESTAMPTZ '2026-02-17 12:30:00+03', TIMESTAMPTZ '2026-02-17 11:00:00+03', TIMESTAMPTZ '2026-02-17 12:28:00+03', TIMESTAMPTZ '2026-02-17 12:45:00+03', TIMESTAMPTZ '2026-02-17 15:00:00+03', 'admin', 'Диалог в аэропорту', 'Ауд. 402', false, false),
+                  ('Группа A-2', 'zhang.wei@example.com', TIMESTAMPTZ '2026-02-19 11:00:00+03', TIMESTAMPTZ '2026-02-19 12:30:00+03', NULL, NULL, NULL, NULL, NULL, 'Домашнее чтение и пересказ', 'Ауд. 402', false, false),
+                  ('Группа A-3', 'chen.lin@example.com', TIMESTAMPTZ '2026-02-16 16:00:00+03', TIMESTAMPTZ '2026-02-16 17:30:00+03', TIMESTAMPTZ '2026-02-16 16:05:00+03', TIMESTAMPTZ '2026-02-16 17:32:00+03', TIMESTAMPTZ '2026-02-16 17:40:00+03', TIMESTAMPTZ '2026-02-16 18:20:00+03', 'admin', 'Приветствие и знакомство', 'Ауд. 210', false, false),
+                  ('Группа A-3', 'chen.lin@example.com', TIMESTAMPTZ '2026-02-18 16:00:00+03', TIMESTAMPTZ '2026-02-18 17:30:00+03', TIMESTAMPTZ '2026-02-18 16:02:00+03', TIMESTAMPTZ '2026-02-18 17:31:00+03', TIMESTAMPTZ '2026-02-18 17:38:00+03', TIMESTAMPTZ '2026-02-18 19:00:00+03', 'admin', 'Чтение иероглифов', 'Ауд. 210', false, false),
+                  ('Группа A-3', 'chen.lin@example.com', TIMESTAMPTZ '2026-02-21 10:00:00+03', TIMESTAMPTZ '2026-02-21 11:30:00+03', NULL, NULL, NULL, NULL, NULL, 'Игровой разговорный клуб', 'Онлайн / Zoom', false, false),
+                  ('Группа T-1', 'chen.lin@example.com', TIMESTAMPTZ '2026-02-17 18:00:00+03', TIMESTAMPTZ '2026-02-17 19:30:00+03', TIMESTAMPTZ '2026-02-17 18:00:00+03', TIMESTAMPTZ '2026-02-17 19:29:00+03', TIMESTAMPTZ '2026-02-17 20:00:00+03', TIMESTAMPTZ '2026-02-17 22:00:00+03', 'admin', 'Техническая терминология: электроника', 'Ауд. 510', false, false),
+                  ('Группа T-1', 'chen.lin@example.com', TIMESTAMPTZ '2026-02-19 18:00:00+03', TIMESTAMPTZ '2026-02-19 19:30:00+03', TIMESTAMPTZ '2026-02-19 18:04:00+03', TIMESTAMPTZ '2026-02-19 19:31:00+03', TIMESTAMPTZ '2026-02-19 19:50:00+03', TIMESTAMPTZ '2026-02-19 21:00:00+03', 'admin', 'Чтение технической документации', 'Ауд. 510', false, false),
+                  ('Группа HSK3-C1', 'zhang.wei@example.com', TIMESTAMPTZ '2026-02-17 09:00:00+03', TIMESTAMPTZ '2026-02-17 10:30:00+03', TIMESTAMPTZ '2026-02-17 09:02:00+03', TIMESTAMPTZ '2026-02-17 10:32:00+03', TIMESTAMPTZ '2026-02-17 10:40:00+03', TIMESTAMPTZ '2026-02-17 12:30:00+03', 'admin', 'HSK3 грамматика: сложные конструкции', 'Ауд. 401', false, false),
+                  ('Группа HSK3-C1', 'zhang.wei@example.com', TIMESTAMPTZ '2026-02-20 09:00:00+03', TIMESTAMPTZ '2026-02-20 10:30:00+03', NULL, NULL, NULL, NULL, NULL, 'Пробный тест HSK3', 'Ауд. 401', false, false)
+              ) AS v(group_name, teacher_email, starts_at, ends_at, actual_starts_at, actual_ends_at, status_marked_at, status_approved_at, approver_username, topic, room, canceled, archived)
+              JOIN study_group sg ON sg.name = v.group_name
+              JOIN person teacher_person ON teacher_person.email = v.teacher_email
+              LEFT JOIN admin_user approver ON approver.username = v.approver_username
+              WHERE NOT EXISTS (
+                SELECT 1
+                FROM lesson_session ls
+                WHERE ls.group_id = sg.id
+                  AND ls.starts_at = v.starts_at
+                  AND ls.topic = v.topic
+              );
+
+  - changeSet:
+      id: 070-seed-attendance-journal
+      author: chinesecourses
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO attendance (lesson_session_id, enrollment_id, status, comment, marked_at, archived, created_at)
+              SELECT ls.id, e.id, v.status, v.comment, now(), false, now()
+              FROM (
+                VALUES
+                  ('Группа A-1', 'Еда и напитки', 'ivanov.p@example.com', 'PRESENT', NULL),
+                  ('Группа A-1', 'Еда и напитки', 'kozlova.a@example.com', 'PRESENT', NULL),
+                  ('Группа A-1', 'Еда и напитки', 'petrova.m@example.com', 'ABSENT', 'Семейные обстоятельства'),
+                  ('Группа A-1', 'Покупки и деньги', 'ivanov.p@example.com', 'LATE', 'Опоздание на автобус'),
+                  ('Группа A-1', 'Покупки и деньги', 'kozlova.a@example.com', 'PRESENT', NULL),
+                  ('Группа A-1', 'Покупки и деньги', 'petrova.m@example.com', 'EXCUSED', 'Справка от педиатра'),
+                  ('Группа A-2', 'Диалог в аэропорту', 'sidorov.a@example.com', 'PRESENT', NULL),
+                  ('Группа A-3', 'Приветствие и знакомство', 'smirnov.k@example.com', 'PRESENT', NULL),
+                  ('Группа A-3', 'Приветствие и знакомство', 'orlova.e@example.com', 'PRESENT', NULL),
+                  ('Группа A-3', 'Чтение иероглифов', 'smirnov.k@example.com', 'LATE', 'Задержался после школы'),
+                  ('Группа A-3', 'Чтение иероглифов', 'orlova.e@example.com', 'PRESENT', NULL),
+                  ('Группа T-1', 'Техническая терминология: электроника', 'morozova.l@example.com', 'PRESENT', NULL),
+                  ('Группа T-1', 'Техническая терминология: электроника', 'kim.yuna@example.com', 'PRESENT', NULL),
+                  ('Группа T-1', 'Чтение технической документации', 'morozova.l@example.com', 'PRESENT', NULL),
+                  ('Группа T-1', 'Чтение технической документации', 'kim.yuna@example.com', 'ABSENT', 'Командировка'),
+                  ('Группа HSK3-C1', 'HSK3 грамматика: сложные конструкции', 'gromov.i@example.com', 'PRESENT', NULL)
+              ) AS v(group_name, topic, student_email, status, comment)
+              JOIN study_group sg ON sg.name = v.group_name
+              JOIN lesson_session ls ON ls.group_id = sg.id AND ls.topic = v.topic
+              JOIN person p ON p.email = v.student_email
+              JOIN enrollment e ON e.student_id = p.id AND e.group_id = sg.id AND e.archived = false
+              WHERE NOT EXISTS (
+                SELECT 1
+                FROM attendance a
+                WHERE a.lesson_session_id = ls.id
+                  AND a.enrollment_id = e.id
+              );

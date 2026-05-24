@@ -1,0 +1,267 @@
+databaseChangeLog:
+  - changeSet:
+      id: 020-create-group-schedule-rule
+      author: chinesecourses
+      changes:
+        - createTable:
+            tableName: group_schedule_rule
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: group_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: day_of_week
+                  type: smallint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: start_time
+                  type: time
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: time
+                  constraints:
+                    nullable: false
+              - column:
+                  name: room
+                  type: varchar(64)
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: "now()"
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: group_schedule_rule
+            baseColumnNames: group_id
+            referencedTableName: study_group
+            referencedColumnNames: id
+            constraintName: fk_rule_group
+            onDelete: restrict
+
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: >
+              ALTER TABLE group_schedule_rule
+              ADD CONSTRAINT ck_rule_time CHECK (start_time < end_time);
+
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: >
+              ALTER TABLE group_schedule_rule
+              ADD CONSTRAINT ck_rule_day_of_week CHECK (day_of_week BETWEEN 1 AND 7);
+
+        - createIndex:
+            tableName: group_schedule_rule
+            indexName: ix_rule_group_id
+            columns:
+              - column:
+                  name: group_id
+
+  - changeSet:
+      id: 021-create-lesson-session
+      author: chinesecourses
+      changes:
+        - createTable:
+            tableName: lesson_session
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: group_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: teacher_id
+                  type: bigint
+              - column:
+                  name: starts_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ends_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: topic
+                  type: varchar(256)
+              - column:
+                  name: room
+                  type: varchar(64)
+              - column:
+                  name: canceled
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: "now()"
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: lesson_session
+            baseColumnNames: group_id
+            referencedTableName: study_group
+            referencedColumnNames: id
+            constraintName: fk_lesson_group
+            onDelete: restrict
+
+        - addForeignKeyConstraint:
+            baseTableName: lesson_session
+            baseColumnNames: teacher_id
+            referencedTableName: teacher
+            referencedColumnNames: id
+            constraintName: fk_lesson_teacher
+            onDelete: set null
+
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: >
+              ALTER TABLE lesson_session
+              ADD CONSTRAINT ck_lesson_time CHECK (starts_at < ends_at);
+
+        - createIndex:
+            tableName: lesson_session
+            indexName: ix_lesson_group_starts_at
+            columns:
+              - column:
+                  name: group_id
+              - column:
+                  name: starts_at
+
+        - createIndex:
+            tableName: lesson_session
+            indexName: ix_lesson_teacher_id
+            columns:
+              - column:
+                  name: teacher_id
+
+  - changeSet:
+      id: 022-create-attendance
+      author: chinesecourses
+      changes:
+        - createTable:
+            tableName: attendance
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: lesson_session_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: enrollment_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(16)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: comment
+                  type: varchar(256)
+              - column:
+                  name: marked_at
+                  type: timestamp with time zone
+                  defaultValueComputed: "now()"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: "now()"
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: attendance
+            baseColumnNames: lesson_session_id
+            referencedTableName: lesson_session
+            referencedColumnNames: id
+            constraintName: fk_attendance_lesson
+            onDelete: cascade
+
+        - addForeignKeyConstraint:
+            baseTableName: attendance
+            baseColumnNames: enrollment_id
+            referencedTableName: enrollment
+            referencedColumnNames: id
+            constraintName: fk_attendance_enrollment
+            onDelete: restrict
+
+        - addUniqueConstraint:
+            tableName: attendance
+            columnNames: lesson_session_id, enrollment_id
+            constraintName: ux_attendance_lesson_enrollment
+
+        - createIndex:
+            tableName: attendance
+            indexName: ix_attendance_enrollment_id
+            columns:
+              - column:
+                  name: enrollment_id
+
+        - createIndex:
+            tableName: attendance
+            indexName: ix_attendance_lesson_id
+            columns:
+              - column:
+                  name: lesson_session_id

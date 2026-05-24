@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: 062-admin-user-group-id
+      author: chinesecourses
+      changes:
+        - addColumn:
+            tableName: admin_user
+            columns:
+              - column:
+                  name: group_id
+                  type: bigint
+        - addForeignKeyConstraint:
+            baseTableName: admin_user
+            baseColumnNames: group_id
+            referencedTableName: study_group
+            referencedColumnNames: id
+            constraintName: fk_admin_user_group
+            onDelete: set null
+        - createIndex:
+            tableName: admin_user
+            indexName: ix_admin_user_group_id
+            columns:
+              - column:
+                  name: group_id
+
+  - changeSet:
+      id: 062-seed-group-shared-accounts
+      author: chinesecourses
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              INSERT INTO admin_user (username, password_hash, role, group_id, created_at)
+              SELECT 
+                'group_' || sg.id::text AS username,
+                '$2b$10$C/sP4TxpYKCAzf6C6EEkFek/YFZffp.e2HkCm.5WxFJX.ffA3PmsO' AS password_hash,
+                'ROLE_GROUP' AS role,
+                sg.id AS group_id,
+                now() AS created_at
+              FROM study_group sg
+              WHERE sg.archived = false
+                AND NOT EXISTS (
+                  SELECT 1
+                  FROM admin_user au
+                  WHERE au.group_id = sg.id
+                    AND au.role = 'ROLE_GROUP'
+                );

@@ -1,15 +1,11 @@
-server:
-  port: ${SERVER_PORT:8080}
-
 spring:
   datasource:
-    url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME:chinesecourses}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: none
-    open-in-view: false
-
+      ddl-auto: validate
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yml
